@@ -73,6 +73,7 @@ class GadgetContainer {
     global $CFG;
     
     // return $CFG->block_shindig_url;
+    // return "http://shindig.epfl.ch";
     return "http://localhost:8080";
   }
   

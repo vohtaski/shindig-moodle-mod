@@ -1,0 +1,70 @@
+<script type="text/javascript" charset="utf-8">
+  /**
+   * OpenSocial gadget rendering
+   * @copyright 2011 Evgeny Bogdanov
+   */ 
+  var my = my || {};
+
+  // gets the data and calls build for container
+  // This container lays out and renders gadgets itself.
+
+  my.LayoutManager = function() {
+    shindig.LayoutManager.call(this);
+  };
+
+  my.LayoutManager.inherits(shindig.LayoutManager);
+
+  my.LayoutManager.prototype.getGadgetChrome = function(gadget) {
+    var chromeId = 'gadget-chrome-' + gadget.id;
+    return chromeId ? document.getElementById(chromeId) : null;
+  };
+
+  shindig.container.layoutManager = new my.LayoutManager();
+  
+  // build the container with a gadget
+  var buildGadget = function(parent,gadget_data,token,shindig_url,height){
+
+    var gadget = shindig.container.createGadget(
+        {specUrl: gadget_data.appUrl, height: height+'px', title: gadget_data.displayName,
+          secureToken: token});
+          
+    shindig.container.addGadget(gadget);
+
+    var gadget_el = document.createElement('div');
+    gadget_el.id = 'gadget-chrome-'+(gadget.id);
+    gadget_el.setAttribute('class','gadget');
+    parent.appendChild(gadget_el);    
+
+    gadget.setServerBase(shindig_url+"/gadgets/");
+    shindig.container.setView("home");
+    shindig.container.setParentUrl("http://"+location.host);
+    
+    shindig.container.renderGadget(gadget);
+
+    // resize the gadget
+    // adjustHeight();
+
+  };
+  
+  // var adjustHeight = function() {
+  //   gadgets.window.adjustHeight();
+  // }
+  
+  setTimeout(function() {
+    // php variable are defined inside
+     var gadget_url = "<?php echo $this->url ?>"; //gadget url;
+     var my_gadget = {id: 1, appUrl: gadget_url, displayName:" "};
+
+     // var context_id = "p_"+viewer.id;
+     // var viewer_id = "p_"+viewer.id;
+     // var token = ""+context_id+":"+viewer_id+":"+gadget_data.id+":default:"+escape(gadget_data.appUrl)+":"+gadget_data.id+":1";
+     var token = "<?php echo $this->get_gadget_token() ?>"; //gadget token;
+     var shindig_url = "<?php echo $this->get_shindig_url() ?>"; //shindig base url;
+
+     var parent = document.getElementById('gadget_'+'<?php echo $this->id ?>');
+     var height = <?php echo $this->get_gadget_height() ?>;
+     buildGadget(parent,my_gadget,token,shindig_url,height);
+  }, 1000);
+</script>
+
+<div id="gadget_<?php echo $this->id ?>"></div>

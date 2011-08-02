@@ -97,15 +97,10 @@ $content = format_text($content, $widgetspace->contentformat, $formatoptions, $c
 echo $OUTPUT->box($content, "generalbox center clearfix");
 
 // add widgets container
-// build container with 1-2-3 columns
+// build container with 1-2-3 columns and add gadgets to it
 require_once($CFG->dirroot.'/mod/widgetspace/lib/container.php');
 $gadget_container = new GadgetContainer($widgetspace->id);
 $gadget_container->build();
-
-// add all gadgets for the container
-require_once($CFG->dirroot.'/mod/widgetspace/lib/gadget.php');
-$gadget = new Gadget();
-$gadget->build($widgetspace->gadgeturl,$widgetspace->id);
 
 $strlastmodified = get_string("lastmodified");
 echo "<div class=\"modified\">$strlastmodified: ".userdate($widgetspace->timemodified)."</div>";

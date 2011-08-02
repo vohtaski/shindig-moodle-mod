@@ -1,0 +1,19 @@
+<script type="text/javascript" charset="utf-8">  
+  var os_gadgets = [
+  <?php
+    foreach ($this->gadgets as $gadget) {      
+      echo '  {id: '.$gadget->id.', appUrl: "'.$gadget->url.'", displayName:" ", token: "'.$this->getGadgetToken($gadget).'", height: "'.$this->getGadgetHeight($gadget).'"},';
+    }
+  ?>
+  
+  ];
+  
+  setTimeout(function() {
+     var shindig_url = "<?php echo $this->get_shindig_url() ?>"; //shindig base url;
+
+     buildAllGadgets(os_gadgets,shindig_url);
+  }, 1000);
+  
+  
+
+</script>

@@ -18,13 +18,74 @@
   }
 </style>
 
+<script type="text/javascript" charset="utf-8">
+  /**
+   * OpenSocial gadget rendering
+   * @copyright 2011 Evgeny Bogdanov
+   */ 
+  var my = my || {};
+
+  // gets the data and calls build for container
+  // This container lays out and renders gadgets itself.
+
+  my.LayoutManager = function() {
+    shindig.LayoutManager.call(this);
+  };
+
+  my.LayoutManager.inherits(shindig.LayoutManager);
+
+  my.LayoutManager.prototype.getGadgetChrome = function(gadget) {
+    var chromeId = 'gadget-chrome-' + gadget.id;
+    return chromeId ? document.getElementById(chromeId) : null;
+  };
+
+  shindig.container.layoutManager = new my.LayoutManager();
+  
+  // build the container with a gadget
+  var buildGadget = function(parent,gadget_data,shindig_url){
+
+    var gadget = shindig.container.createGadget(
+        {specUrl: gadget_data.appUrl, height: gadget_data.height+'px', 
+          title: gadget_data.displayName,
+          secureToken: gadget_data.token});
+          
+    shindig.container.addGadget(gadget);
+    
+    var gadget_el = document.createElement('div');
+    gadget_el.id = 'gadget-chrome-'+(gadget.id);
+    gadget_el.setAttribute('class','gadget');
+    parent.appendChild(gadget_el);    
+
+    gadget.setServerBase(shindig_url+"/gadgets/");
+    shindig.container.setView("home");
+    shindig.container.setParentUrl("http://"+location.host);
+    
+    shindig.container.renderGadget(gadget);
+
+    // resize the gadget
+    // adjustHeight();
+
+  };
+  
+  var column_num = <?php echo $this->getColumnsNumber(); ?>;
+  
+  var buildAllGadgets = function(gadgets,shindig_url) {
+    for (var i = 0; i < gadgets.length; i++){
+      var col = (i+1) % column_num; // number of column where gadget should be put
+      var parent = document.getElementById("column_"+col);
+      
+      buildGadget(parent,gadgets[i],shindig_url);
+    }
+  };
+</script>
+
 <div id="gadget_container">
   <?php
     $column_num = $this->getColumnsNumber();
     $width = 100 / $column_num;
     
     for ($i=1; $i <= $column_num; $i++) { 
-      echo '<div id="column_'.$i.'" style="width: '.$width.'%; position: relative; float: left; top: 0px;"></div>';
+      echo '<div id="column_'.($i%$column_num).'" style="width: '.$width.'%; position: relative; float: left; top: 0px;"></div>';
     }
     
   ?>

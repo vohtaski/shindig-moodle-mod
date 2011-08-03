@@ -1,0 +1,937 @@
+Index: java/social-api/src/main/java/org/apache/shindig/social/core/config/SocialApiGuiceModule.java
+===================================================================
+--- java/social-api/src/main/java/org/apache/shindig/social/core/config/SocialApiGuiceModule.java	(revision 1151378)
++++ java/social-api/src/main/java/org/apache/shindig/social/core/config/SocialApiGuiceModule.java	(working copy)
+@@ -39,6 +39,9 @@
+ import org.apache.shindig.social.opensocial.service.MessageHandler;
+ import org.apache.shindig.social.opensocial.service.PersonHandler;
+ 
++import org.apache.shindig.social.opensocial.oauth.OAuthDataStore;
++import org.apache.shindig.social.sample.oauth.SampleOAuthDataStore;
++
+ import com.google.common.collect.ImmutableSet;
+ import com.google.inject.AbstractModule;
+ import com.google.inject.TypeLiteral;
+@@ -69,6 +72,8 @@
+         BeanJsonConverter.class);
+     bind(BeanConverter.class).annotatedWith(Names.named("shindig.bean.converter.atom")).to(
+         BeanXStreamAtomConverter.class);
++    
++    bind(OAuthDataStore.class).to(SampleOAuthDataStore.class);
+ 
+     bind(new TypeLiteral<List<AuthenticationHandler>>(){}).toProvider(
+         AuthenticationHandlerProvider.class);
+Index: java/samples/src/main/java/org/apache/shindig/social/opensocial/jpa/spi/JPASocialModule.java
+===================================================================
+--- java/samples/src/main/java/org/apache/shindig/social/opensocial/jpa/spi/JPASocialModule.java	(revision 1151378)
++++ java/samples/src/main/java/org/apache/shindig/social/opensocial/jpa/spi/JPASocialModule.java	(working copy)
+@@ -28,7 +28,12 @@
+ import org.apache.shindig.social.opensocial.spi.ActivityService;
+ import org.apache.shindig.social.opensocial.spi.AppDataService;
+ import org.apache.shindig.social.opensocial.spi.PersonService;
++import org.apache.shindig.social.opensocial.spi.AlbumService;
++import org.apache.shindig.social.opensocial.spi.MediaItemService;
++import org.apache.shindig.social.opensocial.spi.MessageService;
+ 
++import org.apache.shindig.social.sample.spi.JsonDbOpensocialService;
++
+ import java.io.IOException;
+ import java.io.InputStream;
+ import java.util.Arrays;
+@@ -92,5 +97,10 @@
+         .in(Scopes.SINGLETON);
+     bind(PersonService.class).to(PersonServiceDb.class).in(Scopes.SINGLETON);
+     bind(AppDataService.class).to(AppDataServiceDb.class).in(Scopes.SINGLETON);
++    
++    //Temporal
++    bind(AlbumService.class).to(JsonDbOpensocialService.class);
++    bind(MediaItemService.class).to(JsonDbOpensocialService.class);
++    bind(MessageService.class).to(JsonDbOpensocialService.class);
+   }
+ }
+Index: java/samples/src/main/java/org/apache/shindig/social/opensocial/jpa/AddressDb.java
+===================================================================
+--- java/samples/src/main/java/org/apache/shindig/social/opensocial/jpa/AddressDb.java	(revision 1151378)
++++ java/samples/src/main/java/org/apache/shindig/social/opensocial/jpa/AddressDb.java	(working copy)
+@@ -36,7 +36,9 @@
+ import javax.persistence.OneToMany;
+ import javax.persistence.Table;
+ import javax.persistence.Version;
++import javax.persistence.Transient;
+ 
++
+ import java.util.List;
+ 
+ /**
+@@ -81,7 +83,8 @@
+   /**
+    * People may be at this address, this is a list of people who are currently at this address.
+    */
+-  @OneToMany(targetEntity = PersonDb.class, mappedBy = "currentLocation")
++  // @OneToMany(targetEntity = PersonDb.class, mappedBy = "currentLocation")
++  @Transient
+   private List<Person> atLocation;
+ 
+   /**
+Index: java/samples/src/main/java/org/apache/shindig/social/opensocial/jpa/BodyTypeDb.java
+===================================================================
+--- java/samples/src/main/java/org/apache/shindig/social/opensocial/jpa/BodyTypeDb.java	(revision 1151378)
++++ java/samples/src/main/java/org/apache/shindig/social/opensocial/jpa/BodyTypeDb.java	(working copy)
+@@ -34,7 +34,9 @@
+ import javax.persistence.OneToMany;
+ import javax.persistence.Table;
+ import javax.persistence.Version;
++import javax.persistence.Transient;
+ 
++
+ import java.util.List;
+ 
+ /**
+@@ -72,7 +74,8 @@
+   @Column(name = "version")
+   protected long version;
+ 
+-  @OneToMany(targetEntity = PersonDb.class, mappedBy = "bodyType")
++  // @OneToMany(targetEntity = PersonDb.class, mappedBy = "bodyType")
++  @Transient
+   private List<Person> persons;
+ 
+   /**
+Index: java/samples/src/main/java/org/apache/shindig/social/opensocial/jpa/PersonDb.java
+===================================================================
+--- java/samples/src/main/java/org/apache/shindig/social/opensocial/jpa/PersonDb.java	(revision 1151378)
++++ java/samples/src/main/java/org/apache/shindig/social/opensocial/jpa/PersonDb.java	(working copy)
+@@ -74,7 +74,7 @@
+  * Default Implementation of the Person object in the org.apache.shindig.social.opensocial.jpa.
+  */
+ @Entity
+-@Table(name = "person")
++@Table(name = "mdl_user")
+ @NamedQueries(value = {
+     @NamedQuery(name = PersonDb.FINDBY_PERSONID,
+         query = "select p from PersonDb p where p.id = :id "),
+@@ -201,38 +201,62 @@
+    */
+   @Id
+   @GeneratedValue(strategy = IDENTITY)
+-  @Column(name = "oid")
++  @Column(name = "id")
+   private long objectId;
+ 
+   /**
+-   * An optimistic locking field.
++   * First Name
+    */
+-  @Version
+-  @Column(name = "version")
+-  protected long version;
++  @Basic
++  @Column(name = "firstname")
++  private String firstName;
+ 
++  /**
++   * Last Name
++   */
+   @Basic
+-  @Column(name = "about_me", length = 255)
++  @Column(name = "lastname")
++  private String lastName;
++  
++  /**
++   * Description
++   */
++  @Basic
++  @Column(name = "description", length = 255)
+   protected String aboutMe;
+ 
+-  @OneToMany(targetEntity = PersonPropertyDb.class, mappedBy = "person", cascade = ALL)
++
++  /**
++   * An optimistic locking field.
++   */
++  // @Version
++  // @Column(name = "version")
++  @Transient
++  protected long version;
++
++  // @OneToMany(targetEntity = PersonPropertyDb.class, mappedBy = "person", cascade = ALL)
++  @Transient
+   protected List<PersonPropertyDb> properties = Lists.newArrayList();
+ 
+-  @OneToMany(targetEntity = PersonAccountDb.class, mappedBy = "person", cascade = ALL)
++  // @OneToMany(targetEntity = PersonAccountDb.class, mappedBy = "person", cascade = ALL)
++  @Transient
+   protected List<Account> accounts;
+ 
+   @Transient
+   protected List<String> activities;
+ 
+-  @OneToMany(targetEntity = PersonAddressDb.class, mappedBy = "person", cascade = ALL)
++  // @OneToMany(targetEntity = PersonAddressDb.class, mappedBy = "person", cascade = ALL)
++  @Transient
+   protected List<Address> addresses;
+ 
+-  @Basic
+-  @Column(name = "age")
++  // @Basic
++  // @Column(name = "age")
++  @Transient
+   protected Integer age;
+ 
+-  @ManyToOne(targetEntity = BodyTypeDb.class, cascade = ALL)
+-  @JoinColumn(name = "body_type_id", referencedColumnName = "oid")
++  // @ManyToOne(targetEntity = BodyTypeDb.class, cascade = ALL)
++  // @JoinColumn(name = "body_type_id", referencedColumnName = "oid")
++  @Transient
+   protected BodyType bodyType;
+ 
+   @Transient
+@@ -241,57 +265,65 @@
+   @Transient
+   protected List<String> cars;
+ 
+-  @Basic
+-  @Column(name = "children", length = 255)
++  // @Basic
++  // @Column(name = "children", length = 255)
++  @Transient
+   protected String children;
+ 
+   /**
+    *
+    */
+-  @ManyToOne(targetEntity = AddressDb.class, cascade = { PERSIST, MERGE, REFRESH })
+-  @JoinColumn(name = "address_id", referencedColumnName = "oid")
++  // @ManyToOne(targetEntity = AddressDb.class, cascade = { PERSIST, MERGE, REFRESH })
++  // @JoinColumn(name = "address_id", referencedColumnName = "oid")
++  @Transient
+   protected Address currentLocation;
+ 
+   /**
+    *
+    */
+-  @Basic
+-  @Column(name = "birthday")
+-  @Temporal(TemporalType.DATE)
++  // @Basic
++  // @Column(name = "birthday")
++  // @Temporal(TemporalType.DATE)
++  @Transient
+   protected Date birthday;
+ 
+   /**
+    *
+    */
+-  @Basic
+-  @Column(name = "drinker", length = 255)
++  // @Basic
++  // @Column(name = "drinker", length = 255)
++  @Transient
+   protected String drinkerDb;
+ 
+   @Transient
+   protected Enum<Drinker> drinker;
+ 
+-  @Basic
+-  @Column(name = "display_name", length = 255)
++  // @Basic
++  // @Column(name = "display_name", length = 255)
++  @Transient
+   private String displayName;
+ 
+   /**
+    *
+    */
+-  @OneToMany(targetEntity = EmailDb.class, mappedBy = "person", cascade = ALL)
++  // @OneToMany(targetEntity = EmailDb.class, mappedBy = "person", cascade = ALL)
++  @Transient
+   protected List<ListField> emails;
+ 
+   /**
+    *
+    */
+-  @Basic
+-  @Column(name = "ethnicity", length = 255)
++  // @Basic
++  // @Column(name = "ethnicity", length = 255)
++  @Transient
+   protected String ethnicity;
+ 
+   /**
+    *
+    */
+-  @Basic
+-  @Column(name = "fashion", length = 255)
++  // @Basic
++  // @Column(name = "fashion", length = 255)
++  @Transient
+   protected String fashion;
+ 
+   /**
+@@ -303,8 +335,9 @@
+   /**
+    *
+    */
+-  @Basic
+-  @Column(name = "gender", length = 255)
++  // @Basic
++  // @Column(name = "gender", length = 255)
++  @Transient
+   protected String genderDb;
+ 
+   @Transient
+@@ -313,8 +346,9 @@
+   /**
+    *
+    */
+-  @Basic
+-  @Column(name = "happiest_when", length = 255)
++  // @Basic
++  // @Column(name = "happiest_when", length = 255)
++  @Transient
+   protected String happiestWhen;
+ 
+   /**
+@@ -332,21 +366,23 @@
+   /**
+    *
+    */
+-  @Basic
+-  @Column(name = "humor", length = 255)
++  // @Basic
++  // @Column(name = "humor", length = 255)
++  @Transient
+   protected String humor;
+ 
+   /**
+    *
+    */
+   @Basic
+-  @Column(name = "person_id", length = 255)
++  @Column(name = "id", length = 255, insertable = false, updatable = false)
+   protected String id;
+ 
+   /**
+    *
+    */
+-  @OneToMany(targetEntity = ImDb.class, mappedBy = "person", cascade = ALL)
++  // @OneToMany(targetEntity = ImDb.class, mappedBy = "person", cascade = ALL)
++  @Transient
+   protected List<ListField> ims;
+ 
+   /**
+@@ -358,8 +394,9 @@
+   /**
+    *
+    */
+-  @Basic
+-  @Column(name = "job_interests", length = 255)
++  // @Basic
++  // @Column(name = "job_interests", length = 255)
++  @Transient
+   protected String jobInterests;
+ 
+   /**
+@@ -371,16 +408,18 @@
+   /**
+    *
+    */
+-  @Basic
+-  @Column(name = "updated")
+-  @Temporal(TemporalType.TIMESTAMP)
++  // @Basic
++  // @Column(name = "updated")
++  // @Temporal(TemporalType.TIMESTAMP)
++  @Transient
+   protected Date updated;
+ 
+   /**
+    *
+    */
+-  @Basic
+-  @Column(name = "living_arrangement", length = 255)
++  // @Basic
++  // @Column(name = "living_arrangement", length = 255)
++  @Transient
+   protected String livingArrangement;
+ 
+   /**
+@@ -405,15 +444,17 @@
+   /**
+    *
+    */
+-  @ManyToOne(targetEntity = NameDb.class, cascade = ALL)
+-  @JoinColumn(name = "name_id", referencedColumnName = "oid")
++  // @ManyToOne(targetEntity = NameDb.class, cascade = ALL)
++  // @JoinColumn(name = "name_id", referencedColumnName = "oid")
++  @Transient
+   protected Name name;
+ 
+   /**
+    *
+    */
+-  @Basic
+-  @Column(name = "network_presence", length = 255)
++  // @Basic
++  // @Column(name = "network_presence", length = 255)
++  @Transient
+   protected String networkPresenceDb;
+ 
+   @Transient
+@@ -423,41 +464,48 @@
+   /**
+    *
+    */
+-  @Basic
+-  @Column(name = "nickname", length = 255)
++  // @Basic
++  // @Column(name = "nickname", length = 255)
++  @Transient
+   protected String nickname;
+ 
+   /**
+    *
+    */
+-  @OneToMany(targetEntity = PersonOrganizationDb.class, mappedBy = "person", cascade = { PERSIST,
+-      MERGE, REFRESH })
++  // @OneToMany(targetEntity = PersonOrganizationDb.class, mappedBy = "person", cascade = { PERSIST,
++      // MERGE, REFRESH })
++  @Transient
+   protected List<Organization> organizations;
+ 
+   /**
+    *
+    */
+-  @Basic
+-  @Column(name = "pets", length = 255)
++  // @Basic
++  // @Column(name = "pets", length = 255)
++  @Transient
+   protected String pets;
+ 
+   /**
+    *
+    */
+-  @OneToMany(targetEntity = PhoneDb.class, mappedBy = "person", cascade = ALL)
++  // @OneToMany(targetEntity = PhoneDb.class, mappedBy = "person", cascade = ALL)
++  @Transient
+   protected List<ListField> phoneNumbers;
+ 
+   /**
+    *
+    */
+-  @OneToMany(targetEntity = PhotoDb.class, mappedBy = "person", cascade = ALL)
++  // @OneToMany(targetEntity = PhotoDb.class, mappedBy = "person", cascade = ALL)
++  @Transient
+   protected List<ListField> photos;
+-  @Basic
+-  @Column(name = "political_views", length = 255)
++  // @Basic
++  // @Column(name = "political_views", length = 255)
++  @Transient
+   protected String politicalViews;
+ 
+-  @Basic
+-  @Column(name = "preferredUsername", length = 255)
++  // @Basic
++  // @Column(name = "preferredUsername", length = 255)
++  @Transient
+   protected String preferredUsername;
+ 
+   /**
+@@ -481,43 +529,49 @@
+   /**
+    *
+    */
+-  @Basic
+-  @Column(name = "relationship_status", length = 255)
++  // @Basic
++  // @Column(name = "relationship_status", length = 255)
++  @Transient
+   protected String relationshipStatus;
+ 
+   /**
+    *
+    */
+-  @Basic
+-  @Column(name = "religion", length = 255)
++  // @Basic
++  // @Column(name = "religion", length = 255)
++  @Transient
+   protected String religion;
+ 
+   /**
+    *
+    */
+-  @Basic
+-  @Column(name = "romance", length = 255)
++  // @Basic
++  // @Column(name = "romance", length = 255)
++  @Transient
+   protected String romance;
+ 
+   /**
+    *
+    */
+-  @Basic
+-  @Column(name = "scared_of", length = 255)
++  // @Basic
++  // @Column(name = "scared_of", length = 255)
++  @Transient
+   protected String scaredOf;
+ 
+   /**
+    *
+    */
+-  @Basic
+-  @Column(name = "sexual_orientation", length = 255)
++  // @Basic
++  // @Column(name = "sexual_orientation", length = 255)
++  @Transient
+   protected String sexualOrientation;
+ 
+   /**
+    *
+    */
+-  @Basic
+-  @Column(name = "smoker", length = 255)
++  // @Basic
++  // @Column(name = "smoker", length = 255)
++  @Transient
+   protected String smokerDb;
+ 
+   @Transient
+@@ -532,8 +586,9 @@
+   /**
+    *
+    */
+-  @Basic
+-  @Column(name = "status", length = 255)
++  // @Basic
++  // @Column(name = "status", length = 255)
++  @Transient
+   protected String status;
+ 
+   /**
+@@ -545,8 +600,9 @@
+   /**
+    *
+    */
+-  @Basic
+-  @Column(name = "utc_offset")
++  // @Basic
++  // @Column(name = "utc_offset")
++  @Transient
+   protected Long utcOffset;
+ 
+   /**
+@@ -570,7 +626,8 @@
+   /**
+    *
+    */
+-  @OneToMany(targetEntity = UrlDb.class, mappedBy = "person", cascade = ALL)
++  // @OneToMany(targetEntity = UrlDb.class, mappedBy = "person", cascade = ALL)
++  @Transient
+   protected List<Url> urls;
+ 
+   // Note: Not in the opensocial js person object directly
+@@ -586,10 +643,11 @@
+    * person_application.person_id points to person.oid and person_application.application_id points
+    * to application.oid.
+    */
+-  @ManyToMany(targetEntity = ApplicationDb.class)
+-  @JoinTable(name = "person_application",
+-      joinColumns = @JoinColumn(name = "person_id", referencedColumnName = "oid"),
+-      inverseJoinColumns = @JoinColumn(name = "application_id", referencedColumnName = "oid"))
++  // @ManyToMany(targetEntity = ApplicationDb.class)
++  // @JoinTable(name = "person_application",
++      // joinColumns = @JoinColumn(name = "person_id", referencedColumnName = "oid"),
++      // inverseJoinColumns = @JoinColumn(name = "application_id", referencedColumnName = "oid"))
++  @Transient
+   protected List<ApplicationDb> applictions;
+ 
+   public PersonDb() {
+@@ -1212,64 +1270,64 @@
+   @PostLoad
+   public void loadTransientFields() {
+ 
+-    drinkerDb = drinker.toString();
+-    genderDb = gender.toString();
+-    networkPresenceDb = networkPresence.toString();
+-    smokerDb = smoker.toString();
++    // drinkerDb = drinker.toString();
++    // genderDb = gender.toString();
++    // networkPresenceDb = networkPresence.toString();
++    // smokerDb = smoker.toString();
++    // 
++    // drinker = new EnumDb<Drinker>(Drinker.valueOf(drinkerDb));
++    // gender = Gender.valueOf(genderDb);
++    // networkPresence = new EnumDb<NetworkPresence>(NetworkPresence.valueOf(networkPresenceDb));
++    // smoker = new EnumDb<Smoker>(Smoker.valueOf(smokerDb));
++    // 
++    // List<String> lookingFor = Lists.newArrayList();
++    // this.activities = Lists.newArrayList();
++    // this.books = Lists.newArrayList();
++    // this.cars = Lists.newArrayList();
++    // this.food = Lists.newArrayList();
++    // this.heroes = Lists.newArrayList();
++    // this.interests = Lists.newArrayList();
++    // this.languagesSpoken = Lists.newArrayList();
++    // this.movies = Lists.newArrayList();
++    // this.music = Lists.newArrayList();
++    // this.quotes = Lists.newArrayList();
++    // this.sports = Lists.newArrayList();
++    // this.tags = Lists.newArrayList();
++    // this.turnOffs = Lists.newArrayList();
++    // this.turnOns = Lists.newArrayList();
++    // this.tvShows = Lists.newArrayList();
++    // 
++    // Map<String, List<String>> toSave = Maps.newHashMap();
++    // 
++    // toSave.put(LOOKING_FOR_PROPERTY, lookingFor);
++    // toSave.put(ACTIVITIES_PROPERTY, this.activities);
++    // toSave.put(BOOKS_PROPERTY, this.books);
++    // toSave.put(CARS_PROPERTY, this.cars);
++    // toSave.put(FOOD_PROPERTY, this.food);
++    // toSave.put(HEROES_PROPERTY, this.heroes);
++    // toSave.put(INTERESTS_PROPERTY, this.interests);
++    // toSave.put(LANGUAGES_PROPERTY, this.languagesSpoken);
++    // toSave.put(MOVIES_PROPERTY, this.movies);
++    // toSave.put(MUSIC_PROPERTY, this.music);
++    // toSave.put(QUOTES_PROPERTY, this.quotes);
++    // toSave.put(SPORTS_PROPERTY, this.sports);
++    // toSave.put(TAGS_PROPERTY, this.tags);
++    // toSave.put(TURNOFFS_PROPERTY, this.turnOffs);
++    // toSave.put(TURNONS_PROPERTY, this.turnOns);
++    // toSave.put(TVSHOWS_PROPERTY, this.tvShows);
++    // 
++    // for (PersonPropertyDb pp : properties) {
++    //   List<String> l = toSave.get(pp.type);
++    //   if (l != null) {
++    //     l.add(pp.getValue());
++    //   }
++    // }
++    // 
++    // this.lookingFor = Lists.newArrayList();
++    // for (String lf : lookingFor) {
++    //   this.lookingFor.add(new EnumDb<LookingFor>(LookingFor.valueOf(lf)));
++    // }
+ 
+-    drinker = new EnumDb<Drinker>(Drinker.valueOf(drinkerDb));
+-    gender = Gender.valueOf(genderDb);
+-    networkPresence = new EnumDb<NetworkPresence>(NetworkPresence.valueOf(networkPresenceDb));
+-    smoker = new EnumDb<Smoker>(Smoker.valueOf(smokerDb));
+-
+-    List<String> lookingFor = Lists.newArrayList();
+-    this.activities = Lists.newArrayList();
+-    this.books = Lists.newArrayList();
+-    this.cars = Lists.newArrayList();
+-    this.food = Lists.newArrayList();
+-    this.heroes = Lists.newArrayList();
+-    this.interests = Lists.newArrayList();
+-    this.languagesSpoken = Lists.newArrayList();
+-    this.movies = Lists.newArrayList();
+-    this.music = Lists.newArrayList();
+-    this.quotes = Lists.newArrayList();
+-    this.sports = Lists.newArrayList();
+-    this.tags = Lists.newArrayList();
+-    this.turnOffs = Lists.newArrayList();
+-    this.turnOns = Lists.newArrayList();
+-    this.tvShows = Lists.newArrayList();
+-
+-    Map<String, List<String>> toSave = Maps.newHashMap();
+-
+-    toSave.put(LOOKING_FOR_PROPERTY, lookingFor);
+-    toSave.put(ACTIVITIES_PROPERTY, this.activities);
+-    toSave.put(BOOKS_PROPERTY, this.books);
+-    toSave.put(CARS_PROPERTY, this.cars);
+-    toSave.put(FOOD_PROPERTY, this.food);
+-    toSave.put(HEROES_PROPERTY, this.heroes);
+-    toSave.put(INTERESTS_PROPERTY, this.interests);
+-    toSave.put(LANGUAGES_PROPERTY, this.languagesSpoken);
+-    toSave.put(MOVIES_PROPERTY, this.movies);
+-    toSave.put(MUSIC_PROPERTY, this.music);
+-    toSave.put(QUOTES_PROPERTY, this.quotes);
+-    toSave.put(SPORTS_PROPERTY, this.sports);
+-    toSave.put(TAGS_PROPERTY, this.tags);
+-    toSave.put(TURNOFFS_PROPERTY, this.turnOffs);
+-    toSave.put(TURNONS_PROPERTY, this.turnOns);
+-    toSave.put(TVSHOWS_PROPERTY, this.tvShows);
+-
+-    for (PersonPropertyDb pp : properties) {
+-      List<String> l = toSave.get(pp.type);
+-      if (l != null) {
+-        l.add(pp.getValue());
+-      }
+-    }
+-
+-    this.lookingFor = Lists.newArrayList();
+-    for (String lf : lookingFor) {
+-      this.lookingFor.add(new EnumDb<LookingFor>(LookingFor.valueOf(lf)));
+-    }
+-
+   }
+ 
+   /*
+@@ -1278,7 +1336,7 @@
+    * @see org.apache.shindig.social.opensocial.model.Person#getDisplayName()
+    */
+   public String getDisplayName() {
+-    return displayName;
++    return firstName+" "+lastName;
+   }
+ 
+   /*
+Index: java/samples/src/main/java/org/apache/shindig/social/opensocial/jpa/eclipselink/Bootstrap.java
+===================================================================
+--- java/samples/src/main/java/org/apache/shindig/social/opensocial/jpa/eclipselink/Bootstrap.java	(revision 1151378)
++++ java/samples/src/main/java/org/apache/shindig/social/opensocial/jpa/eclipselink/Bootstrap.java	(working copy)
+@@ -107,12 +107,19 @@
+     // Ensure that no server-platform is configured
+     properties.put(TARGET_SERVER, TargetServer.None);
+ 
+-    properties.put(PersistenceUnitProperties.DDL_GENERATION, PersistenceUnitProperties.CREATE_ONLY);
++    // TODO: this should be taken from persistence.xml
++    properties.put(PersistenceUnitProperties.DDL_GENERATION, "none");
+     properties.put(PersistenceUnitProperties.DROP_JDBC_DDL_FILE, "drop.sql");
+     properties.put(PersistenceUnitProperties.CREATE_JDBC_DDL_FILE, "create.sql");
+-    properties.put(PersistenceUnitProperties.DDL_GENERATION_MODE,
+-        PersistenceUnitProperties.DDL_BOTH_GENERATION);
++    properties.put(PersistenceUnitProperties.DDL_GENERATION_MODE,"database");
+ 
++    // The default shindig settings
++    // properties.put(PersistenceUnitProperties.DDL_GENERATION, PersistenceUnitProperties.CREATE_ONLY);
++    // properties.put(PersistenceUnitProperties.DROP_JDBC_DDL_FILE, "drop.sql");
++    // properties.put(PersistenceUnitProperties.CREATE_JDBC_DDL_FILE, "create.sql");
++    // properties.put(PersistenceUnitProperties.DDL_GENERATION_MODE,
++    //     PersistenceUnitProperties.DDL_BOTH_GENERATION);
++
+     // properties.put(PersistenceUnitProperties.SESSION_CUSTOMIZER,
+     // EnableIntegrityChecker.class.getName());
+ 
+Index: java/samples/src/main/java/org/apache/shindig/social/opensocial/jpa/NameDb.java
+===================================================================
+--- java/samples/src/main/java/org/apache/shindig/social/opensocial/jpa/NameDb.java	(revision 1151378)
++++ java/samples/src/main/java/org/apache/shindig/social/opensocial/jpa/NameDb.java	(working copy)
+@@ -32,7 +32,9 @@
+ import javax.persistence.OneToMany;
+ import javax.persistence.Table;
+ import javax.persistence.Version;
++import javax.persistence.Transient;
+ 
++
+ import java.util.List;
+ 
+ /**
+@@ -71,7 +73,8 @@
+    * A list of people who shared this name, relationship is specified by the name property on the
+    * Person Object.
+    */
+-  @OneToMany(targetEntity = PersonDb.class, mappedBy = "name")
++  // @OneToMany(targetEntity = PersonDb.class, mappedBy = "name")
++  @Transient
+   private List<Person> persons;
+ 
+   /**
+Index: java/samples/src/main/resources/socialjpa.properties
+===================================================================
+--- java/samples/src/main/resources/socialjpa.properties	(revision 1151378)
++++ java/samples/src/main/resources/socialjpa.properties	(working copy)
+@@ -15,12 +15,12 @@
+ # specific language governing permissions and limitations
+ # under the License.
+ 
+-db.driver=org.apache.derby.jdbc.EmbeddedDriver
+-db.url=jdbc:derby:target/testdb;create=true
+-db.user=sa
+-db.password=
++db.driver=com.mysql.jdbc.Driver
++db.url=jdbc:mysql://localhost:3306/moodle
++db.user=shindig
++db.password=shindig
+ db.write.min=1
+ db.read.min=1
+ jpa.socialapi.unitname=default
+-
++ 
+ shindig.canonical.json.db=sampledata/canonicaldb.json
+Index: java/samples/pom.xml
+===================================================================
+--- java/samples/pom.xml	(revision 1151378)
++++ java/samples/pom.xml	(working copy)
+@@ -79,7 +79,14 @@
+       </plugin>
+     </plugins>
+   </build>
+-  <dependencies>
++  <dependencies>    
++    <!-- add a driver for mysql -->
++    <dependency>
++      <groupId>mysql</groupId>
++      <artifactId>mysql-connector-java</artifactId>
++      <version>5.1.6</version>
++    </dependency>
++    
+     <!-- project dependencies -->
+     <dependency>
+       <groupId>org.apache.shindig</groupId>
+Index: java/server/src/main/webapp/WEB-INF/web.xml
+===================================================================
+--- java/server/src/main/webapp/WEB-INF/web.xml	(revision 1151378)
++++ java/server/src/main/webapp/WEB-INF/web.xml	(working copy)
+@@ -33,13 +33,9 @@
+       org.apache.shindig.common.PropertiesModule:
+       org.apache.shindig.gadgets.DefaultGuiceModule:
+       org.apache.shindig.social.core.config.SocialApiGuiceModule:
+-      org.apache.shindig.social.sample.SampleModule:
++      org.apache.shindig.social.opensocial.jpa.spi.JPASocialModule:
+       org.apache.shindig.gadgets.oauth.OAuthModule:
+       org.apache.shindig.common.cache.ehcache.EhCacheModule:
+-      org.apache.shindig.sample.shiro.ShiroGuiceModule:
+-      org.apache.shindig.sample.container.SampleContainerGuiceModule:
+-      org.apache.shindig.extras.ShindigExtrasGuiceModule:
+-      org.apache.shindig.extras.as.ActivityStreamsGuiceModule
+     </param-value>
+   </context-param>
+ 
+@@ -59,10 +55,10 @@
+    <context-param>
+   	<param-name>system.properties</param-name>
+      <param-value>
+-    	shindig.host=localhost
++    	shindig.host=iamac71.epfl.ch
+     	
+     	aKey=/shindig/gadgets/proxy?container=default&amp;url=
+-    	shindig.port=
++    	shindig.port=8080
+     	
+      </param-value>
+   </context-param>  
+Index: java/server/pom.xml
+===================================================================
+--- java/server/pom.xml	(revision 1151378)
++++ java/server/pom.xml	(working copy)
+@@ -125,6 +125,11 @@
+       <groupId>org.apache.shindig</groupId>
+       <artifactId>shindig-extras</artifactId>
+     </dependency>
++    <dependency>
++      <groupId>org.apache.shindig</groupId>
++      <artifactId>shindig-samples</artifactId>
++    </dependency>
++    
+ 
+     <!-- external dependencies -->
+     <dependency>
+Index: java/common/conf/shindig.properties
+===================================================================
+--- java/common/conf/shindig.properties	(revision 1151378)
++++ java/common/conf/shindig.properties	(working copy)
+@@ -31,8 +31,8 @@
+ 
+ ### Outbound OAuth support
+ shindig.signing.state-key=
+-shindig.signing.key-name=
+-shindig.signing.key-file=
++shindig.signing.key-name=mytestkey
++shindig.signing.key-file=/Library/WebServer/Documents/shindig_moodle/ssl_keys/oauthkey.pem
+ shindig.signing.global-callback-url=http://localhost:8080/gadgets/oauthcallback
+ shindig.signing.enable-signed-callbacks=true
+ 
+Index: java/common/src/main/java/org/apache/shindig/auth/BasicSecurityTokenCodec.java
+===================================================================
+--- java/common/src/main/java/org/apache/shindig/auth/BasicSecurityTokenCodec.java	(revision 1151378)
++++ java/common/src/main/java/org/apache/shindig/auth/BasicSecurityTokenCodec.java	(working copy)
+@@ -78,8 +78,10 @@
+ 
+     try {
+       String[] tokens = StringUtils.split(token, ':');
+-      if (tokens.length != TOKEN_COUNT) {
++      if (tokens.length < TOKEN_COUNT) {
+         throw new SecurityTokenException("Malformed security token");
++      }else{
++    	  tokens = this.parseToken(tokens);
+       }
+ 
+       return new BasicSecurityToken(
+@@ -104,4 +106,26 @@
+    */
+   public BasicSecurityTokenCodec() {
+   }
++  /**
++   * Parses the security token
++   */
++  public String[] parseToken(String[] tokens) {
++    int url_number = tokens.length-6;
++    String[] output = new String[TOKEN_COUNT];
++    //get array elements corresponding to broken url - http://host:port/gadget.xml -> ["http","//host","port/gadget.xml"]
++    
++    String[] url_array = new String[url_number];
++    //copy first part (before url)
++    System.arraycopy(tokens,0,output,0,4);
++    //build url
++    System.arraycopy(tokens, 4, url_array, 0, url_number);
++    String url = Joiner.on(":").join(url_array);
++    //copy url
++    output[4] = url;
++    //copy last part (after url)
++    System.arraycopy(tokens,(4+url_number),output,5,2);
++    
++    return output;   
++  }
++  
+ }
+Index: pom.xml
+===================================================================
+--- pom.xml	(revision 1151378)
++++ pom.xml	(working copy)
+@@ -431,6 +431,7 @@
+         <module>java/gadgets</module>
+         <module>java/social-api</module>
+         <module>java/server</module>
++        <module>java/samples</module>
+         <module>extras</module>
+       </modules>
+     </profile>
+@@ -494,6 +495,7 @@
+           <artifactId>shindig-extras</artifactId>
+           <version>${project.version}</version>
+         </dependency>
++        
+         <!-- external dependencies -->
+       </dependencies>
+ 
+@@ -1390,6 +1392,11 @@
+       </dependency>
+       <dependency>
+         <groupId>org.apache.shindig</groupId>
++        <artifactId>shindig-samples</artifactId>
++        <version>${project.version}</version>
++      </dependency>
++      <dependency>
++        <groupId>org.apache.shindig</groupId>
+         <artifactId>shindig-common</artifactId>
+         <version>${project.version}</version>
+         <type>test-jar</type>
+Index: features/src/main/javascript/features/shindig.container/shindig-container.js
+===================================================================
+--- features/src/main/javascript/features/shindig.container/shindig-container.js	(revision 1151378)
++++ features/src/main/javascript/features/shindig.container/shindig-container.js	(working copy)
+@@ -648,6 +648,17 @@
+   // Get the gadget metadata and check if the gadget requires the 'pubsub-2'
+   // feature.  If so, then we use OpenAjax Hub in order to create and manage
+   // the iframe.  Otherwise, we create the iframe ourselves.
++  
++  // ***********************
++  // TODO: Evgeny's extension to avoid buggy metadata call
++  var gadget = this;
++  var subClass = shindig.IfrGadget;
++  for (var name in subClass) if (subClass.hasOwnProperty(name)) {
++    gadget[name] = subClass[name];
++  }
++  return;
++  // ***********************
++  
+   var request = {
+     context: {
+       country: "default",

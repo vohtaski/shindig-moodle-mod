@@ -19,7 +19,7 @@
  * Strings for component 'widgetspace', language 'en', branch 'MOODLE_20_STABLE'
  *
  * @package   widgetspace
- * @copyright 1999 onwards Martin Dougiamas  {@link http://moodle.com}
+ * @copyright 2011 Evgeny Bogdanov (http://vohtaski.blogspot.com)
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -34,7 +34,7 @@ $string['legacyfiles'] = 'Migration of old course file';
 $string['legacyfilesactive'] = 'Active';
 $string['legacyfilesdone'] = 'Finished';
 $string['modulename'] = 'Widget space';
-$string['modulename_help'] = 'A widgetspace enables a web widgetspace to be displayed and edited within the course.';
+$string['modulename_help'] = 'A widgetspace enables a OpenSocial gadgets to be added to the course.';
 $string['modulenameplural'] = 'Widget spaces';
 $string['neverseen'] = 'Never seen';
 $string['optionsheader'] = 'Options';
@@ -55,4 +55,6 @@ $string['gadgeturl'] = 'Gadget url';
 $string['numbercolumn'] = 'Number of columns';
 $string['layoutsettings'] = 'Gadgets layout settings';
 $string['gadgetoptions'] = 'Gadget options';
+$string['widgetspacegadgets'] = 'OpenSocial gadget url';
+$string['widgetspacegadgets_help'] = 'Add a url of your gadget and it will be added to the widgetspace.';
 

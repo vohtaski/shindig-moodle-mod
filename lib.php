@@ -124,6 +124,8 @@ function widgetspace_add_instance($data, $mform) {
             $gadget->url = $value;
             $gadget->widgetspaceid = $widgetspace->id;
             $gadget->timemodified = time();
+            // set height and name of a gadget
+            set_gadget_metadata($gadget->url,$gadget);
             $DB->insert_record("widgetspace_gadgets", $gadget);
         }
     }
@@ -167,6 +169,8 @@ function widgetspace_update_instance($data, $mform) {
         $gadget = new stdClass();
         $gadget->url = $value;
         $gadget->widgetspaceid = $widgetspace->id;
+        // set height and name of a gadget
+        set_gadget_metadata($gadget->url,$gadget);
         $gadget->timemodified = time();
         if (isset($widgetspace->gadgetid[$key]) && !empty($widgetspace->gadgetid[$key])){//existing choice record
             $gadget->id=$widgetspace->gadgetid[$key];
@@ -191,6 +195,34 @@ function widgetspace_update_instance($data, $mform) {
     }
 
     return true;
+}
+
+/**
+ * Request gadget metadata from shindig
+ * 
+ * Takes $gadget as a parameter and adds height and name for it
+ */
+function set_gadget_metadata($gadget_url,$gadget) {
+    global $CFG;
+    require_once($CFG->dirroot.'/mod/widgetspace/lib/container.php');
+    
+    $gadget_container = new GadgetContainer(null);
+    $shindig_url = $gadget_container->get_shindig_url();
+    
+    $request = $shindig_url.'/gadgets/metadata?st=0:0:0:0:0:0:0';
+  
+    $c = new curl();
+    $c->setopt(array('CURLOPT_TIMEOUT' => 3, 'CURLOPT_CONNECTTIMEOUT' => 3, 'CURLOPT_HTTPHEADER' => array("Content-Type: application/json","Accept: application/json")));
+    // , "Content-length: ".strlen($data)
+  
+    $data = '{"context":{"view":"canvas","container":"default"},"gadgets":[{"url":"'.$gadget_url.'", "moduleId":0}]}';
+    $response = $c->post($request,$data);
+    $json = json_decode($response);
+    // var_dump($json);
+    $gadgets = $json->gadgets;
+    //set height of gadget
+    $gadget->height = ($gadgets[0]->height == 0) ? 200 : $gadgets[0]->height; 
+    $gadget->name = $gadgets[0]->title; //set name of gadget
 }
 
 /**

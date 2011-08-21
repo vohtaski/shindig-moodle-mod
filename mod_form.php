@@ -67,7 +67,7 @@ class mod_widgetspace_mod_form extends moodleform_mod {
         
         $repeatarray = array();
         $repeatarray[] = &MoodleQuickForm::createElement('header', '', get_string('gadget','widgetspace').' {no}');
-        $repeatarray[] = &MoodleQuickForm::createElement('text', 'gadget', get_string('gadgeturl','widgetspace'));
+        $repeatarray[] = &MoodleQuickForm::createElement('text', 'gadget', get_string('gadgeturl','widgetspace'),array('size' => '80'));
         $repeatarray[] = &MoodleQuickForm::createElement('hidden', 'gadgetid', 0);
 
         if ($this->_instance){

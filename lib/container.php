@@ -62,11 +62,11 @@ class GadgetContainer {
   }
   
   function getGadgetHeight($gadget) {
-    if ($gadget->height) {
-      return $gadget->height;
-    } else {
-      return 200;
-    }
+    return ($gadget->height) ? $gadget->height : 200;
+  }
+  
+  function getGadgetName($gadget) {
+    return ($gadget->name) ? $gadget->name : " ";
   }
   
   function get_shindig_url() {

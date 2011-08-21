@@ -2,7 +2,7 @@
   var os_gadgets = [
   <?php
     foreach ($this->gadgets as $gadget) {      
-      echo '  {id: '.$gadget->id.', appUrl: "'.$gadget->url.'", displayName:" ", token: "'.$this->getGadgetToken($gadget).'", height: "'.$this->getGadgetHeight($gadget).'"},';
+      echo '  {id: '.$gadget->id.', appUrl: "'.$gadget->url.'", displayName:"'.$this->getGadgetName($gadget).'", token: "'.$this->getGadgetToken($gadget).'", height: "'.$this->getGadgetHeight($gadget).'"},';
     }
   ?>
   

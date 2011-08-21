@@ -33,8 +33,10 @@
       <FIELDS>
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" SEQUENCE="true" NEXT="widgetspaceid"/>
         <FIELD NAME="widgetspaceid" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" DEFAULT="0" SEQUENCE="false" PREVIOUS="id" NEXT="url"/>
-        <FIELD NAME="url" TYPE="text" LENGTH="small" NOTNULL="false" SEQUENCE="false" PREVIOUS="widgetspaceid" NEXT="timemodified"/>
-        <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" DEFAULT="0" SEQUENCE="false" PREVIOUS="url"/>
+        <FIELD NAME="url" TYPE="text" LENGTH="small" NOTNULL="false" SEQUENCE="false" PREVIOUS="widgetspaceid" NEXT="name"/>
+        <FIELD NAME="name" TYPE="text" LENGTH="small" NOTNULL="false" SEQUENCE="false" PREVIOUS="url" NEXT="height"/>
+        <FIELD NAME="height" TYPE="int" LENGTH="4" NOTNULL="true" UNSIGNED="true" DEFAULT="200" SEQUENCE="false"  PREVIOUS="name" NEXT="timemodified"/>
+        <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" DEFAULT="0" SEQUENCE="false" PREVIOUS="height"/>
       </FIELDS>
       <KEYS>
 

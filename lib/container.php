@@ -50,8 +50,11 @@ class GadgetContainer {
       global $USER, $COURSE, $CFG;
       
       $token = "";
-      $token.= $USER->id.":"; // owner_id
-      $token.= $USER->id.":"; // viewer_id
+      // owner of a gadget is the current widgetspace, we use prefix for spaces extension
+      $token.= "s_".$this->id.":"; 
+      // viewer of a gadget, we use prefix for spaces extension
+      $token.= "p_".$USER->id.":"; 
+      // application_id (current gadget)
       $token.= $gadget->id.":"; // module_id
       $token.= "default:";
       $token.= urlencode($gadget->url) . ":"; // escape("http://"+gadget_url)

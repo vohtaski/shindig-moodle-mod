@@ -223,6 +223,9 @@ function set_gadget_metadata($gadget_url,$gadget) {
     //set height of gadget
     $gadget->height = ($gadgets[0]->height == 0) ? 200 : $gadgets[0]->height; 
     $gadget->name = $gadgets[0]->title; //set name of gadget
+    $gadget->thumbnail = $gadgets[0]->thumbnail; 
+    $gadget->screenshot = $gadgets[0]->screenshot;
+    $gadget->description = $gadgets[0]->description;
 }
 
 /**

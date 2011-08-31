@@ -29,19 +29,37 @@
       </INDEXES>
     </TABLE>
     
-    <TABLE NAME="widgetspace_gadgets" COMMENT="available gadgets for widgetspace" PREVIOUS="widgetspace">
+    <TABLE NAME="widgetspace_gadgets" COMMENT="available gadgets for widgetspace" PREVIOUS="widgetspace" NEXT="widgetspace_appdatas">
       <FIELDS>
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" SEQUENCE="true" NEXT="widgetspaceid"/>
         <FIELD NAME="widgetspaceid" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" DEFAULT="0" SEQUENCE="false" PREVIOUS="id" NEXT="url"/>
         <FIELD NAME="url" TYPE="text" LENGTH="small" NOTNULL="false" SEQUENCE="false" PREVIOUS="widgetspaceid" NEXT="name"/>
         <FIELD NAME="name" TYPE="text" LENGTH="small" NOTNULL="false" SEQUENCE="false" PREVIOUS="url" NEXT="height"/>
-        <FIELD NAME="height" TYPE="int" LENGTH="4" NOTNULL="true" UNSIGNED="true" DEFAULT="200" SEQUENCE="false"  PREVIOUS="name" NEXT="timemodified"/>
-        <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" DEFAULT="0" SEQUENCE="false" PREVIOUS="height"/>
+        <FIELD NAME="height" TYPE="int" LENGTH="4" NOTNULL="true" UNSIGNED="true" DEFAULT="200" SEQUENCE="false"  PREVIOUS="name" NEXT="thumbnail"/>
+        <FIELD NAME="thumbnail" TYPE="text" LENGTH="small" NOTNULL="false" SEQUENCE="false" PREVIOUS="height" NEXT="screenshot"/>
+        <FIELD NAME="screenshot" TYPE="text" LENGTH="small" NOTNULL="false" SEQUENCE="false" PREVIOUS="thumbnail" NEXT="description"/>
+        <FIELD NAME="description" TYPE="text" LENGTH="small" NOTNULL="false" SEQUENCE="false" PREVIOUS="screenshot" NEXT="timemodified"/>
+        <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" DEFAULT="0" SEQUENCE="false" PREVIOUS="description"/>
       </FIELDS>
       <KEYS>
 
         <KEY NAME="primary" TYPE="primary" FIELDS="id" NEXT="widgetspaceid"/>
         <KEY NAME="widgetspaceid" TYPE="foreign" FIELDS="widgetspaceid" REFTABLE="widgetspace" REFFIELDS="id" PREVIOUS="primary"/>
+      </KEYS>
+    </TABLE>
+    
+    <TABLE NAME="widgetspace_appdatas" COMMENT="OpenSocial appdata store for gadgets" PREVIOUS="widgetspace_gadgets">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" SEQUENCE="true" NEXT="application_id"/>
+        <FIELD NAME="application_id" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" SEQUENCE="false" PREVIOUS="id" NEXT="context_id"/>
+        <FIELD NAME="context_id" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" SEQUENCE="false" PREVIOUS="application_id" NEXT="context_type"/> 
+        <FIELD NAME="context_type" TYPE="char" LENGTH="20" NOTNULL="true" SEQUENCE="false" PREVIOUS="context_id" NEXT="name"/>
+        
+        <FIELD NAME="name" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false" PREVIOUS="context_type" NEXT="value"/>
+        <FIELD NAME="value" TYPE="char" LENGTH="4096" NOTNULL="true" SEQUENCE="false"  PREVIOUS="name"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
       </KEYS>
     </TABLE>
     

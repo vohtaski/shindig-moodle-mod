@@ -31,8 +31,9 @@ Click button "Save and display". Enjoy!
 
 Example gadgets
 ===============
-Iframe gadget (uses appdata to save urls) - http://graaasp.epfl.ch/gadget/iframe.xml
-Sample gadgets stats - viewer/owner and context (widgetspace id) for a widget - http://graaasp.epfl.ch/gadget/gadget_info.xml
+* Iframe gadget (uses appdata to save urls) - http://graaasp.epfl.ch/gadget/iframe.xml
+* Sample gadgets stats - viewer/owner and context (widgetspace id) for a widget - http://graaasp.epfl.ch/gadget/gadget_info.xml
+
 See code inside for more details
 
 Installation

@@ -1,3 +1,7 @@
+0.3.0
+-----
+Added backward compatibility of people and appdata request (for gadgets created for non-space extended containers)
+
 0.2.0
 -----
 Spaces, Appdata, widget viewer/owner support.

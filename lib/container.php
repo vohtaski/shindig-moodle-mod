@@ -53,7 +53,7 @@ class GadgetContainer {
       // owner of a gadget is the current widgetspace, we use prefix for spaces extension
       $token.= "s_".$this->id.":"; 
       // viewer of a gadget, we use prefix for spaces extension
-      $token.= "p_".$USER->id.":"; 
+      $token.= $USER->id.":"; 
       // application_id (current gadget)
       $token.= $gadget->id.":"; // module_id
       $token.= "default:";
@@ -78,6 +78,7 @@ class GadgetContainer {
     // return $CFG->block_shindig_url;
     // return "http://shindig.epfl.ch";
     return "http://localhost:8080";
+    // return "http://iamac71.epfl.ch:8080";
   }
   
   // executes php statements and

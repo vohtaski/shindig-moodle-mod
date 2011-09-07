@@ -1642,7 +1642,7 @@ Index: java/social-api/src/main/java/org/apache/shindig/social/opensocial/servic
 ===================================================================
 --- java/social-api/src/main/java/org/apache/shindig/social/opensocial/service/ContextHandler.java	(revision 0)
 +++ java/social-api/src/main/java/org/apache/shindig/social/opensocial/service/ContextHandler.java	(revision 0)
-@@ -0,0 +1,91 @@
+@@ -0,0 +1,84 @@
 +/*
 + * Licensed to the Apache Software Foundation (ASF) under one
 + * or more contributor license agreements. See the NOTICE file
@@ -1708,23 +1708,16 @@ Index: java/social-api/src/main/java/org/apache/shindig/social/opensocial/servic
 +   */
 +  @Operation(httpMethods = "GET")
 +  public Future<?> get(SocialRequestItem request) throws ProtocolException {
-+	
-+	String owner = request.getToken().getOwnerId();
-+	String id = "";
-+	String type = "";
-+	if(owner.startsWith("p_")){
-+		type = "@person";
-+		id = owner.replaceFirst("p_","");
-+	}else{
-+		if(owner.startsWith("s_")){
-+			type = "@space";
-+			id = owner.replaceFirst("s_","");;			
-+		}else{
-+			throw new IllegalArgumentException("Wrong OwnerId is specified");
-+		}
-+	}
-+		
-+	Context context = new Context(id,type);
++  
++    String owner = request.getToken().getOwnerId();
++    String id = owner;
++    String type = "@person";
++    if (owner.startsWith("s_")) { // for spaces
++      type = "@space";
++      id = owner.replaceFirst("s_","");;      
++    }
++    
++    Context context = new Context(id,type);
 +    
 +    return ImmediateFuture.newInstance(context);
 +
@@ -3095,7 +3088,7 @@ Index: java/samples/src/main/java/org/apache/shindig/social/opensocial/jpa/spi/A
  
  /**
   *
-@@ -56,18 +62,42 @@
+@@ -56,18 +62,33 @@
    public Future<Void> deletePersonData(UserId userId, GroupId groupId, String appId,
        Set<String> fields, SecurityToken token) throws ProtocolException {
  
@@ -3107,28 +3100,14 @@ Index: java/samples/src/main/java/org/apache/shindig/social/opensocial/jpa/spi/A
 +      appId = token.getAppId();
 +    }        
 +    String uid = SPIUtils.getUserList(userId, token);
-+    String contextType = "";
-+    long contextId = 0;
-+    if (uid.startsWith("p_")) {
-+      // appdata for a person
-+      contextId = Long.parseLong(uid.replaceFirst("p_",""));
-+      contextType = "User";
-+    } else { 
-+      if (uid.startsWith("s_")) {
-+        // appdata for a space
-+        contextId = Long.parseLong(uid.replaceFirst("s_",""));
-+        contextType = "Space";
-+      } else {
-+        //throw exception in Protocol: id should contain a prefix "p_" or "s_"
-+        throw new ProtocolException(HttpServletResponse.SC_NOT_FOUND ,"id should contain a prefix 'p_' (for people) or 's_' (for spaces)");
-       }
-     }
--     // TODO How should transactions be managed? Should samples be using warp-persist instead?
--     if (!entityManager.getTransaction().isActive()) {
--       entityManager.getTransaction().begin();
--     }
- 
--    entityManager.flush();
++    String contextType = "User";
++    long contextId = Long.parseLong(uid);
++    if (uid.startsWith("s_")) { // for space
++      // appdata for a space
++      contextId = Long.parseLong(uid.replaceFirst("s_",""));
++      contextType = "Space";
++    }
++
 +    Map<String,AppdataDb> dataMaps = getDataMap(contextId, contextType, groupId, appId);
 +    
 +    // TODO How should transactions be managed? Should samples be using warp-persist instead?
@@ -3141,13 +3120,18 @@ Index: java/samples/src/main/java/org/apache/shindig/social/opensocial/jpa/spi/A
 +      if (dataMaps.containsKey(f)) {
 +        AppdataDb ad = dataMaps.get(f);
 +        entityManager.remove(ad);
-+      }
-+    }
-+
+       }
+     }
+-     // TODO How should transactions be managed? Should samples be using warp-persist instead?
+-     if (!entityManager.getTransaction().isActive()) {
+-       entityManager.getTransaction().begin();
+-     }
+ 
+-    entityManager.flush();
      entityManager.getTransaction().commit();
  
      return ImmediateFuture.newInstance(null);
-@@ -80,118 +110,174 @@
+@@ -80,118 +101,165 @@
     * @param token
     * @return
     */
@@ -3225,12 +3209,12 @@ Index: java/samples/src/main/java/org/apache/shindig/social/opensocial/jpa/spi/A
    }
  
    /**
-+   * Filters contexts list to ids like: "p_1","s_2" -> "1","2"
++   * Filters contexts list to ids like: "s_1","s_2" -> "1","2"
 +   */
 +  private List<Long> removeContextInfo(List<String> contextList) {
 +    List<Long> idList = Lists.newArrayList();
 +    for (String c : contextList) {
-+      idList.add(Long.parseLong(c.replaceFirst("p_","").replaceFirst("s_","")));
++      idList.add(Long.parseLong(c.replaceFirst("s_","")));
 +    }
 +    return idList;
 +  }
@@ -3249,20 +3233,11 @@ Index: java/samples/src/main/java/org/apache/shindig/social/opensocial/jpa/spi/A
 +    // for now all context are defined by the first context in the list
 +    String firstContext = contextList.get(0); 
 +    String contextType = "User";
-+    String prefix = "p_";
-+    if(firstContext.startsWith("p_")){
-+      // appdata for a person
-+      contextType = "User";
-+      prefix = "p_";
-+    }else{ 
-+      if(firstContext.startsWith("s_")){
-+        // appdata for a space
-+        contextType = "Space";
-+        prefix = "s_";
-+      }else{
-+        //throw exception in Protocol: id should contain a prefix "p_" or "s_"
-+        throw new ProtocolException(HttpServletResponse.SC_NOT_FOUND ,"id should contain a prefix 'p_' (for people) or 's_' (for spaces)");
-+      }
++    String prefix = "";
++    if (firstContext.startsWith("s_")) {
++      // appdata for a space
++      contextType = "Space";
++      prefix = "s_";
 +    }
 +    
 +    List<Long> paramList = removeContextInfo(contextList);
@@ -3360,7 +3335,7 @@ Index: java/samples/src/main/java/org/apache/shindig/social/opensocial/jpa/spi/A
      DataCollection dc = new DataCollection(results);
      return ImmediateFuture.newInstance(dc);
    }
-@@ -200,20 +286,62 @@
+@@ -200,20 +268,52 @@
     * {@inheritDoc}
     */
    public Future<Void> updatePersonData(UserId userId, GroupId groupId, String appId,
@@ -3370,30 +3345,21 @@ Index: java/samples/src/main/java/org/apache/shindig/social/opensocial/jpa/spi/A
 -    for (ApplicationDataMapDb adm : dataMaps) {
 -      for (String f : fields) {
 -        adm.getValues().put(f, values.get(f));
+-      }
 +      Set<String> fields, Map<String, String> values, SecurityToken token) throws ProtocolException {
 +        
 +    if (appId == null) {
 +      appId = token.getAppId();
-+    }
-+    String uid = SPIUtils.getUserList(userId, token);
-+    String contextType = "";
-+    long contextId = 0;
-+    if (uid.startsWith("p_")) {
-+      // appdata for a person
-+      contextId = Long.parseLong(uid.replaceFirst("p_",""));
-+      contextType = "User";
-+    } else { 
-+      if (uid.startsWith("s_")) {
-+        // appdata for a space
-+        contextId = Long.parseLong(uid.replaceFirst("s_",""));
-+        contextType = "Space";
-+      } else {
-+        //throw exception in Protocol: id should contain a prefix "p_" or "s_"
-+        throw new ProtocolException(HttpServletResponse.SC_NOT_FOUND ,"id should contain a prefix 'p_' (for people) or 's_' (for spaces)");
-       }
      }
 -
-+        
++    String uid = SPIUtils.getUserList(userId, token);
++    String contextType = "User";
++    long contextId = Long.parseLong(uid);
++    if (uid.startsWith("s_")) { // for spaces
++      contextId = Long.parseLong(uid.replaceFirst("s_",""));
++      contextType = "Space";
++    }
++    
 +    Map<String,AppdataDb> dataMaps = getDataMap(contextId, contextType, groupId, appId);
 +    
      // TODO How should transactions be managed? Should samples be using warp-persist instead?
@@ -4543,76 +4509,60 @@ Index: java/samples/src/main/java/org/apache/shindig/social/opensocial/jpa/spi/P
        }
  
        if (plist == null) {
-@@ -159,10 +182,79 @@
+@@ -159,10 +182,63 @@
    public Future<Person> getPerson(UserId id, Set<String> fields, SecurityToken token)
        throws ProtocolException {
      String uid = id.getUserId(token);
 -    Query q = entiyManager.createNamedQuery(PersonDb.FINDBY_PERSONID);
 +    Query q = null;
-+    if(uid.startsWith("p_")){
-+      // gets a person from the database
-+      uid = uid.replaceFirst("p_","");
 +    
-+    }else{ 
-+      if(uid.startsWith("s_")){
-+        // Previous implementation (probably deprecated)
-+        // gets a space from the database
-+        // q = entityManager.createNamedQuery(SpaceDb.FINDBY_SPACEID);
-+        // q.setParameter(SpaceDb.PARAM_SPACEID, uid.replaceFirst("s_",""));
-+        // q.setFirstResult(0);
-+        // q.setMaxResults(1);
-+
-+        // Current implementation to support owner for spaces
-+        // Takes space as context and viewer from security token
-+        String spaceId = uid.replaceFirst("s_","");
-+        String viewerId = token.getViewerId().replaceFirst("p_","");
-+        
-+        // Get Id of moodle course for this widgetspace
-+        String moodleCourseId = "";
-+        // gets space for spaceId from the database
-+        q = entityManager.createNamedQuery(SpaceDb.FINDBY_SPACEID);
-+        q.setParameter(SpaceDb.PARAM_SPACEID, spaceId);
-+        q.setFirstResult(0);
-+        q.setMaxResults(1);
-+        List<?> plist = q.getResultList();
-+        if (plist != null && !plist.isEmpty()) {
-+          Space s = (Space) plist.get(0);
-+          moodleCourseId = s.getParentId();
-+        }
-+        
-+        // get course owners
-+        StringBuilder sb = new StringBuilder();
-+        sb.append(PermissionDb.JPQL_OWNERS_BY_MOODLE_COURSE);
-+        sb.append(moodleCourseId).append("')");
-+        List<String> owners = JPQLUtils.getListQuery(entityManager, sb.toString(),
-+            Lists.newArrayList(), null);
-+            
-+        /**
-+         * Only course teachers and managers are considered to be owners
-+         * Site administrators are not the owners of widgetspaces
-+         * If we want to add them as owners we should append mdl_config -> siteadmins
-+         * to PersonServiceDb.java (getPerson) -> owners variable
-+         */
-+                    
-+        // If viewer is in the list of owners for a space it returns him, 
-+        // otherwise returns first user from owners list.
-+        if (owners.size() == 0) {
-+          throw new ProtocolException(HttpServletResponse.SC_NOT_FOUND ,"space does not have owners!");
-+        }
-+        
-+        uid = owners.get(0);
-+        for (String owner : owners) {
-+          if (owner.equals(viewerId)) {
-+            uid = viewerId; // viewer is the owner, set it
-+            break;
-+          }
-+        }
-+        
-+        
-+      }else{
-+        //throw exception in Protocol: id should contain a prefix "p_" or "s_"
-+        throw new ProtocolException(HttpServletResponse.SC_NOT_FOUND ,"id should contain a prefix 'p_' (for people) or 's_' (for spaces)");
++    if (uid.startsWith("s_")) { // for spaces
++      // Current implementation to support owner for spaces
++      // Takes space as context and viewer from security token
++      String spaceId = uid.replaceFirst("s_","");
++      String viewerId = token.getViewerId();
++      
++      // Get Id of moodle course for this widgetspace
++      String moodleCourseId = "";
++      // gets space for spaceId from the database
++      q = entityManager.createNamedQuery(SpaceDb.FINDBY_SPACEID);
++      q.setParameter(SpaceDb.PARAM_SPACEID, spaceId);
++      q.setFirstResult(0);
++      q.setMaxResults(1);
++      List<?> plist = q.getResultList();
++      if (plist != null && !plist.isEmpty()) {
++        Space s = (Space) plist.get(0);
++        moodleCourseId = s.getParentId();
 +      }
++      
++      // get course owners
++      StringBuilder sb = new StringBuilder();
++      sb.append(PermissionDb.JPQL_OWNERS_BY_MOODLE_COURSE);
++      sb.append(moodleCourseId).append("')");
++      List<String> owners = JPQLUtils.getListQuery(entityManager, sb.toString(),
++          Lists.newArrayList(), null);
++          
++      /**
++       * Only course teachers and managers are considered to be owners
++       * Site administrators are not the owners of widgetspaces
++       * If we want to add them as owners we should append mdl_config -> siteadmins
++       * to PersonServiceDb.java (getPerson) -> owners variable
++       */
++                  
++      // If viewer is in the list of owners for a space it returns him, 
++      // otherwise returns first user from owners list.
++      if (owners.size() == 0) {
++        throw new ProtocolException(HttpServletResponse.SC_NOT_FOUND ,"space does not have owners!");
++      }
++      
++      uid = owners.get(0);
++      for (String owner : owners) {
++        if (owner.equals(viewerId)) {
++          uid = viewerId; // viewer is the owner, set it
++          break;
++        }
++      }     
++      
 +    }
 +    
 +    // uid is set up now: either user-owner or owner of a space
@@ -4624,7 +4574,7 @@ Index: java/samples/src/main/java/org/apache/shindig/social/opensocial/jpa/spi/P
      List<?> plist = q.getResultList();
      Person person = null;
      if (plist != null && !plist.isEmpty()) {
-@@ -171,8 +263,56 @@
+@@ -171,8 +247,56 @@
      return ImmediateFuture.newInstance(person);
    }
  
@@ -7092,12 +7042,8 @@ Index: java/server/src/main/webapp/WEB-INF/web.xml
      </param-value>
    </context-param>
  
-@@ -59,10 +55,10 @@
-    <context-param>
-   	<param-name>system.properties</param-name>
-      <param-value>
--    	shindig.host=localhost
-+    	shindig.host=iamac71.epfl.ch
+@@ -62,7 +58,7 @@
+     	shindig.host=localhost
      	
      	aKey=/shindig/gadgets/proxy?container=default&amp;url=
 -    	shindig.port=

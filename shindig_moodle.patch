@@ -3088,7 +3088,7 @@ Index: java/samples/src/main/java/org/apache/shindig/social/opensocial/jpa/spi/A
  
  /**
   *
-@@ -56,18 +62,33 @@
+@@ -56,18 +62,35 @@
    public Future<Void> deletePersonData(UserId userId, GroupId groupId, String appId,
        Set<String> fields, SecurityToken token) throws ProtocolException {
  
@@ -3101,11 +3101,13 @@ Index: java/samples/src/main/java/org/apache/shindig/social/opensocial/jpa/spi/A
 +    }        
 +    String uid = SPIUtils.getUserList(userId, token);
 +    String contextType = "User";
-+    long contextId = Long.parseLong(uid);
++    long contextId = 0;
 +    if (uid.startsWith("s_")) { // for space
 +      // appdata for a space
 +      contextId = Long.parseLong(uid.replaceFirst("s_",""));
 +      contextType = "Space";
++    } else { // for person
++      contextId = Long.parseLong(uid);
 +    }
 +
 +    Map<String,AppdataDb> dataMaps = getDataMap(contextId, contextType, groupId, appId);
@@ -3131,7 +3133,7 @@ Index: java/samples/src/main/java/org/apache/shindig/social/opensocial/jpa/spi/A
      entityManager.getTransaction().commit();
  
      return ImmediateFuture.newInstance(null);
-@@ -80,118 +101,165 @@
+@@ -80,118 +103,165 @@
     * @param token
     * @return
     */
@@ -3335,7 +3337,7 @@ Index: java/samples/src/main/java/org/apache/shindig/social/opensocial/jpa/spi/A
      DataCollection dc = new DataCollection(results);
      return ImmediateFuture.newInstance(dc);
    }
-@@ -200,20 +268,52 @@
+@@ -200,20 +270,54 @@
     * {@inheritDoc}
     */
    public Future<Void> updatePersonData(UserId userId, GroupId groupId, String appId,
@@ -3354,10 +3356,12 @@ Index: java/samples/src/main/java/org/apache/shindig/social/opensocial/jpa/spi/A
 -
 +    String uid = SPIUtils.getUserList(userId, token);
 +    String contextType = "User";
-+    long contextId = Long.parseLong(uid);
-+    if (uid.startsWith("s_")) { // for spaces
++    long contextId = 0;
++    if (uid.startsWith("s_")) { // for space
 +      contextId = Long.parseLong(uid.replaceFirst("s_",""));
 +      contextType = "Space";
++    } else { // for person
++      contextId = Long.parseLong(uid);
 +    }
 +    
 +    Map<String,AppdataDb> dataMaps = getDataMap(contextId, contextType, groupId, appId);

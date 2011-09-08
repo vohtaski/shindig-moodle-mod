@@ -1,3 +1,7 @@
+0.4.0
+-----
+No big changes. License added. Prepared to be uploaded in Moodle.
+
 0.3.0
 -----
 Added backward compatibility of people and appdata request (for gadgets created for non-space extended containers)

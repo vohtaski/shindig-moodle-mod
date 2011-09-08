@@ -2,7 +2,8 @@ About
 ==============
 This is a plugin to add OpenSocial gadgets to the Moodle.
 OpenSocial gadgets are rendered via Apache Shindig (version 2.0)
-in an iGoogle similar fashion. 
+in an iGoogle similar fashion. Read more and see screenshots at
+[this blog](http://vohtaski.blogspot.com/2011/09/bring-opensocial-gadgets-to-moodle.html)
 
 Requirements
 ==============

@@ -1,3 +1,8 @@
+0.5.0
+-----
+Plugin is adapted to word together with block plugin:
+https://github.com/vohtaski/shindig-moodle-block
+
 0.4.0
 -----
 No big changes. License added. Prepared to be uploaded in Moodle.

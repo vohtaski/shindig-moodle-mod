@@ -77,8 +77,8 @@ class GadgetContainer {
     
     // return $CFG->block_shindig_url;
     // return "http://shindig.epfl.ch";
-    return "http://localhost:8080";
-    // return "http://iamac71.epfl.ch:8080";
+    // return "http://localhost:8080";
+    return "http://iamac71.epfl.ch:8080";
   }
   
   // executes php statements and

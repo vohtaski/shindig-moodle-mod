@@ -1727,6 +1727,31 @@ Index: java/social-api/src/main/java/org/apache/shindig/social/opensocial/servic
 +  }
 +
 +}
+Index: java/social-api/src/main/java/org/apache/shindig/social/opensocial/service/AppDataHandler.java
+===================================================================
+--- java/social-api/src/main/java/org/apache/shindig/social/opensocial/service/AppDataHandler.java	(revision 1162941)
++++ java/social-api/src/main/java/org/apache/shindig/social/opensocial/service/AppDataHandler.java	(working copy)
+@@ -26,6 +26,7 @@
+ 
+ import java.util.Map;
+ import java.util.Set;
++import java.util.HashSet;
+ import java.util.concurrent.Future;
+ 
+ import javax.servlet.http.HttpServletResponse;
+@@ -62,9 +63,11 @@
+ 
+     HandlerPreconditions.requireNotEmpty(userIds, "No userId specified");
+     HandlerPreconditions.requireSingular(userIds, "Multiple userIds not supported");
++    
++    Set<String> fields = new HashSet(request.getListParameter("keys"));
+ 
+     return service.deletePersonData(userIds.iterator().next(), request.getGroup(),
+-        request.getAppId(), request.getFields(), request.getToken());
++        request.getAppId(), fields, request.getToken());
+   }
+ 
+   /**
 Index: java/social-api/src/main/java/org/apache/shindig/social/opensocial/service/SpaceHandler.java
 ===================================================================
 --- java/social-api/src/main/java/org/apache/shindig/social/opensocial/service/SpaceHandler.java	(revision 0)
@@ -3088,14 +3113,12 @@ Index: java/samples/src/main/java/org/apache/shindig/social/opensocial/jpa/spi/A
  
  /**
   *
-@@ -56,18 +62,35 @@
+@@ -56,18 +62,43 @@
    public Future<Void> deletePersonData(UserId userId, GroupId groupId, String appId,
        Set<String> fields, SecurityToken token) throws ProtocolException {
  
 -    List<ApplicationDataMapDb> dataMaps = getDataMap(userId, groupId, appId, token);
 -    for (ApplicationDataMapDb adm : dataMaps) {
--      for (String f : fields) {
--        adm.getValues().remove(f);
 +    if (appId == null) {
 +      appId = token.getAppId();
 +    }        
@@ -3116,12 +3139,21 @@ Index: java/samples/src/main/java/org/apache/shindig/social/opensocial/jpa/spi/A
 +    if (!entityManager.getTransaction().isActive()) {
 +      entityManager.getTransaction().begin();
 +    }
-+    
-+    // remove found fields
-+    for (String f : fields) {
-+      if (dataMaps.containsKey(f)) {
-+        AppdataDb ad = dataMaps.get(f);
++     
++    // only add in the fields
++    if (fields == null || fields.isEmpty()) { 
++      // no keys, then remove all appdata
++      for (AppdataDb ad : dataMaps.values()) {
 +        entityManager.remove(ad);
++      }
++    } else {
++      // remove found keys
+       for (String f : fields) {
+-        adm.getValues().remove(f);
++        if (dataMaps.containsKey(f)) {
++          AppdataDb ad = dataMaps.get(f);
++          entityManager.remove(ad);
++        }
        }
      }
 -     // TODO How should transactions be managed? Should samples be using warp-persist instead?
@@ -3133,7 +3165,7 @@ Index: java/samples/src/main/java/org/apache/shindig/social/opensocial/jpa/spi/A
      entityManager.getTransaction().commit();
  
      return ImmediateFuture.newInstance(null);
-@@ -80,118 +103,165 @@
+@@ -80,118 +111,165 @@
     * @param token
     * @return
     */
@@ -3337,7 +3369,7 @@ Index: java/samples/src/main/java/org/apache/shindig/social/opensocial/jpa/spi/A
      DataCollection dc = new DataCollection(results);
      return ImmediateFuture.newInstance(dc);
    }
-@@ -200,20 +270,54 @@
+@@ -200,20 +278,54 @@
     * {@inheritDoc}
     */
    public Future<Void> updatePersonData(UserId userId, GroupId groupId, String appId,
@@ -7046,8 +7078,12 @@ Index: java/server/src/main/webapp/WEB-INF/web.xml
      </param-value>
    </context-param>
  
-@@ -62,7 +58,7 @@
-     	shindig.host=localhost
+@@ -59,10 +55,10 @@
+    <context-param>
+   	<param-name>system.properties</param-name>
+      <param-value>
+-    	shindig.host=localhost
++    	shindig.host=iamac71.epfl.ch
      	
      	aKey=/shindig/gadgets/proxy?container=default&amp;url=
 -    	shindig.port=
@@ -7075,17 +7111,19 @@ Index: java/common/conf/shindig.properties
 ===================================================================
 --- java/common/conf/shindig.properties	(revision 1162941)
 +++ java/common/conf/shindig.properties	(working copy)
-@@ -31,8 +31,8 @@
+@@ -31,9 +31,9 @@
  
  ### Outbound OAuth support
  shindig.signing.state-key=
 -shindig.signing.key-name=
 -shindig.signing.key-file=
+-shindig.signing.global-callback-url=http://localhost:8080/gadgets/oauthcallback
 +shindig.signing.key-name=mytestkey
 +shindig.signing.key-file=/Library/WebServer/Documents/shindig_moodle_2.0/ssl_keys/oauthkey.pem
- shindig.signing.global-callback-url=http://localhost:8080/gadgets/oauthcallback
++shindig.signing.global-callback-url=http://iamac71.epfl.ch:8080/gadgets/oauthcallback
  shindig.signing.enable-signed-callbacks=true
  
+ # Set to true if you want to allow the use of 3-legged OAuth tokens when viewer != owner.
 Index: java/common/src/main/java/org/apache/shindig/auth/BasicSecurityTokenCodec.java
 ===================================================================
 --- java/common/src/main/java/org/apache/shindig/auth/BasicSecurityTokenCodec.java	(revision 1162941)

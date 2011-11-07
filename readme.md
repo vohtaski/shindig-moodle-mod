@@ -47,7 +47,13 @@ Install moodle plugin
 * Rename this folder to **widgetspace** and drop it to moodle->mod. 
 * Go in Moodle to Site Administration->Notifications and install plugin
 * Specify the Apache Shindig installation to use for gadgets 
-(see function get_shindig_url at container.php )
+
+        Find the function get_shindig_url in container.php. The default
+        return value is "http://iamac71.epfl.ch:8080", which means that the
+        server http://iamac71.epfl.ch:8080 will be used. If you want to use your
+        own server, the default return value should be replaced by its
+        domain, e.g., change the return value to "http://localhost:8080".
+
 
 If you only want to render gadgets, you can specify any shindig installation
 existing in the cloud (for example http://shindig.epfl.ch). 
@@ -93,7 +99,12 @@ Add your database information to java/samples/src/main/resources/socialjpa.prope
     shindig.canonical.json.db=sampledata/canonicaldb.json
     
     
-Change host and port settings for your shindig in java/server/src/main/webapp/WEB-INF/web.xml
+Change host and port settings for your shindig
+    
+    # You should specify which shindig host will be run, e.g. , if you want
+    # to run the shindig host on your local machine, you should replace the
+    # value "iamac71.epfl.ch" with "localhost" in
+    # java/server/src/main/webapp/WEB-INF/web.xml line 58
     
     shindig.host=iamac71.epfl.ch
     aKey=/shindig/gadgets/proxy?container=default&amp;url=

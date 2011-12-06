@@ -42,9 +42,8 @@
   
   // build the container with a gadget
   var buildGadget = function(parent,gadget_data,shindig_url){
-
     var gadget = shindig.container.createGadget(
-        {specUrl: gadget_data.appUrl, height: gadget_data.height+'px', 
+        {specUrl: encodeURI(gadget_data.appUrl), height: gadget_data.height+'px', 
           title: gadget_data.displayName,
           secureToken: gadget_data.token});
           

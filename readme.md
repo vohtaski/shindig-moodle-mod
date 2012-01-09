@@ -174,5 +174,5 @@ Shindig patch (shindig_moodle.patch) - ASF
   
 Thanks
 =======
-Carsten Ullrich
-Alex DePena
+* Carsten Ullrich
+* Alex DePena

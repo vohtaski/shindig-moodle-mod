@@ -125,7 +125,7 @@ Compile and start your server
     
 Notes for Moodle 2.2
 -------------------
-For moodle 2.2 you have to change the CHAR_MAX_LENGTH limit, which is 1333
+For moodle 2.2 you have to change the CHAR_MAX_LENGTH limit, which is set to 1333.
 Find line CHAR_MAX_LENGTH = 1333 in moodle/lib/xmldb/xmldb_field.php
 and change it into
 CHAR_MAX_LENGTH = 8192

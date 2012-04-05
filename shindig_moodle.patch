@@ -1488,7 +1488,7 @@ Index: java/social-api/src/main/java/org/apache/shindig/social/opensocial/servic
 ===================================================================
 --- java/social-api/src/main/java/org/apache/shindig/social/opensocial/service/ApplicationHandler.java	(revision 0)
 +++ java/social-api/src/main/java/org/apache/shindig/social/opensocial/service/ApplicationHandler.java	(revision 0)
-@@ -0,0 +1,106 @@
+@@ -0,0 +1,111 @@
 +/*
 + * Licensed to the Apache Software Foundation (ASF) under one
 + * or more contributor license agreements. See the NOTICE file
@@ -1534,9 +1534,9 @@ Index: java/social-api/src/main/java/org/apache/shindig/social/opensocial/servic
 +import com.google.inject.Inject;
 +
 +/**
-+ * RPC/REST handler for all /applications requests
++ * RPC/REST handler for all /apps requests
 + */
-+@Service(name = "applications", path = "/{contextId}+/{contextType}")
++@Service(name = "apps", path = "/{contextId}+/{contextType}")
 +public class ApplicationHandler {
 +  private final ApplicationService applicationService;
 +  private final ContainerConfig config;
@@ -1548,9 +1548,9 @@ Index: java/social-api/src/main/java/org/apache/shindig/social/opensocial/servic
 +  }
 +
 +  /**
-+   * Allowed end-points /applications/{contextId}/{contextType} /applications/{applicationId}+ 
++   * Allowed end-points /apps/{contextId}/{contextType} /apps/{applicationId}+ 
 +   *
-+   * examples: /applications/john.doe/@person /applications/tex.group/@space /applications/mywidget
++   * examples: /apps/john.doe/@person /apps/tex.group/@space /apps/mywidget
 +   */
 +  @Operation(httpMethods = "GET")
 +  public Future<?> get(SocialRequestItem request) throws ProtocolException {
@@ -1563,9 +1563,14 @@ Index: java/social-api/src/main/java/org/apache/shindig/social/opensocial/servic
 +    
 +    CollectionOptions options = new CollectionOptions(request);
 +    if(contextType == null){
-+    	// when contextType is not specified, get list of applications specified by ids
++    	// when contextType is not specified, get list of apps specified by ids
 +    	if(contextIds.size() == 1){
-+    		return applicationService.getApplication(new ApplicationId(contextIds.iterator().next()), fields, request.getToken());
++        String contextId = contextIds.iterator().next();
++        if (contextId.equals("@self")) {
++          // get app id from the token
++          contextId = request.getToken().getAppId();
++        }
++        return applicationService.getApplication(new ApplicationId(contextId), fields, request.getToken());
 +    	}else{
 +    	    ImmutableSet.Builder<ApplicationId> ids = ImmutableSet.builder();
 +    	    for (String id : contextIds) {
@@ -1576,12 +1581,12 @@ Index: java/social-api/src/main/java/org/apache/shindig/social/opensocial/servic
 +    		return applicationService.getApplications(applicationIds, options, fields, request.getToken());
 +    	}
 +    }else{
-+    	// contextType is specified, get a list of applications for this context
++    	// contextType is specified, get a list of apps for this context
 +    	if(contextIds.size() == 1){
 +    		Context context = new Context(contextIds.iterator().next(),contextType);
 +    		return applicationService.getApplicationsForContext(context, options, fields, request.getToken());
 +    	}else{
-+    		throw new IllegalArgumentException("Cannot fetch applications for multiple contexts");
++    		throw new IllegalArgumentException("Cannot fetch apps for multiple contexts");
 +    	}
 +    }
 +    
@@ -2528,7 +2533,7 @@ Index: java/samples/src/main/java/org/apache/shindig/social/opensocial/jpa/Space
 ===================================================================
 --- java/samples/src/main/java/org/apache/shindig/social/opensocial/jpa/SpaceDb.java	(revision 0)
 +++ java/samples/src/main/java/org/apache/shindig/social/opensocial/jpa/SpaceDb.java	(revision 0)
-@@ -0,0 +1,536 @@
+@@ -0,0 +1,565 @@
 +/*
 + * Licensed to the Apache Software Foundation (ASF) under one
 + * or more contributor license agreements. See the NOTICE file
@@ -2576,6 +2581,10 @@ Index: java/samples/src/main/java/org/apache/shindig/social/opensocial/jpa/Space
 +import org.apache.shindig.social.opensocial.model.Smoker;
 +import org.apache.shindig.social.opensocial.model.Url;
 +
++import org.apache.shindig.social.opensocial.jpa.MoodleCourseModuleDb;
++import org.apache.shindig.social.opensocial.jpa.MoodleModuleDb;
++import org.apache.shindig.social.opensocial.jpa.MoodleContextDb;
++
 +import java.util.Date;
 +import java.util.HashMap;
 +import java.util.List;
@@ -2601,6 +2610,7 @@ Index: java/samples/src/main/java/org/apache/shindig/social/opensocial/jpa/Space
 +import javax.persistence.TemporalType;
 +import javax.persistence.Transient;
 +import javax.persistence.Version;
++import javax.persistence.FetchType;
 +
 +/**
 + * Default Implementation of the Person object in the org.apache.shindig.social.opensocial.jpa.
@@ -2613,6 +2623,9 @@ Index: java/samples/src/main/java/org/apache/shindig/social/opensocial/jpa/Space
 +    @NamedQuery(name = SpaceDb.FINDBY_LIKE_SPACEID,
 +        query = "select s from SpaceDb s where s.id like :id") })
 +public class SpaceDb implements Space, DbObject {
++
++  // !!! no trailing '/'
++  public static final String MOODLE_URL = "http://iamac71.epfl.ch/moodle";
 +
 +  public static final String FINDBY_SPACEID = "q.space.findbyspaceid";
 +
@@ -2686,6 +2699,18 @@ Index: java/samples/src/main/java/org/apache/shindig/social/opensocial/jpa/Space
 +  
 +  @Transient // parentType is a course
 +  protected String parentType;
++
++  //@OneToMany(fetch=FetchType.EAGER)
++  //@JoinTable(
++      //name="mdl_course_modules",
++      //joinColumns=
++        //@JoinColumn(name="instance", referencedColumnName="id"),
++      //inverseJoinColumns=@JoinColumn(name="module", referencedColumnName="id")
++  //)
++  //protected List<MoodleModuleDb> mm;
++
++  @OneToMany(targetEntity = MoodleCourseModuleDb.class, mappedBy = "space", cascade = ALL)
++  protected List<MoodleCourseModuleDb> courseModules;  //@OneToOne
 +
 +  /**
 +   * An optimistic locking field.
@@ -2953,7 +2978,17 @@ Index: java/samples/src/main/java/org/apache/shindig/social/opensocial/jpa/Space
 +  // Proxied fields
 +
 +  public String getProfileUrl() {
-+    return "widgetspace_url"+String.valueOf(objectId);  
++    for (MoodleCourseModuleDb mc : courseModules) {
++      if (mc.getCourseId().equals(parentId) // course is the same as of widgetspace
++         && mc.getInstanceId().equals(id) // widgetspace's id
++         && mc.getModule().getName().equals("widgetspace")) {
++
++        String uniqId = mc.getId();
++        return MOODLE_URL + "/mod/widgetspace/view.php?id="+uniqId;
++      }
++    }
++
++    return "Cant find widgetspace unique id";
 +  }
 +
 +  public void setProfileUrl(String profileUrl) {
@@ -2968,10 +3003,9 @@ Index: java/samples/src/main/java/org/apache/shindig/social/opensocial/jpa/Space
 +  public String getThumbnailUrl() {
 +    String pic = picture;
 +    if (pic == null || pic.equals("")) {
-+      return "widgetspace_url/space_thumb.png";
++      return MOODLE_URL + "/theme/image.php?theme=standard&amp;image=icon&amp;rev=178&amp;component=widgetspace";
 +    }
-+    
-+    return "widgetspace_url/"+String.valueOf(objectId)+"/thumb/"+pic;        
++    return MOODLE_URL + "/theme/image.php?theme=standard&amp;image=icon&amp;rev=178&amp;component=widgetspace";
 +  }
 +
 +  public void setThumbnailUrl(String thumbnailUrl) {
@@ -4667,6 +4701,230 @@ Index: java/samples/src/main/java/org/apache/shindig/social/opensocial/jpa/spi/P
    /**
     * Add a filter clause specified by the collection options.
     *
+Index: java/samples/src/main/java/org/apache/shindig/social/opensocial/jpa/MoodleCourseModuleDb.java
+===================================================================
+--- java/samples/src/main/java/org/apache/shindig/social/opensocial/jpa/MoodleCourseModuleDb.java	(revision 0)
++++ java/samples/src/main/java/org/apache/shindig/social/opensocial/jpa/MoodleCourseModuleDb.java	(revision 0)
+@@ -0,0 +1,219 @@
++/*
++ * Licensed to the Apache Software Foundation (ASF) under one
++ * or more contributor license agreements. See the NOTICE file
++ * distributed with this work for additional information
++ * regarding copyright ownership. The ASF licenses this file
++ * to you under the Apache License, Version 2.0 (the
++ * "License"); you may not use this file except in compliance
++ * with the License. You may obtain a copy of the License at
++ *
++ *     http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing,
++ * software distributed under the License is distributed on an
++ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++ * KIND, either express or implied. See the License for the
++ * specific language governing permissions and limitations under the License.
++ */
++package org.apache.shindig.social.opensocial.jpa;
++
++import static javax.persistence.CascadeType.ALL;
++import static javax.persistence.CascadeType.MERGE;
++import static javax.persistence.CascadeType.PERSIST;
++import static javax.persistence.CascadeType.REFRESH;
++import static javax.persistence.GenerationType.IDENTITY;
++
++import com.google.common.collect.Lists;
++import com.google.common.collect.Maps;
++
++import org.apache.shindig.social.opensocial.jpa.api.DbObject;
++import org.apache.shindig.social.opensocial.jpa.api.FilterCapability;
++import org.apache.shindig.social.opensocial.jpa.api.FilterSpecification;
++import org.apache.shindig.protocol.model.Enum;
++import org.apache.shindig.protocol.model.FilterOperation;
++import org.apache.shindig.social.opensocial.model.Account;
++import org.apache.shindig.social.opensocial.model.Address;
++import org.apache.shindig.social.opensocial.model.BodyType;
++import org.apache.shindig.social.opensocial.model.Drinker;
++import org.apache.shindig.social.opensocial.model.ListField;
++import org.apache.shindig.social.opensocial.model.LookingFor;
++import org.apache.shindig.social.opensocial.model.Name;
++import org.apache.shindig.social.opensocial.model.NetworkPresence;
++import org.apache.shindig.social.opensocial.model.Organization;
++import org.apache.shindig.social.opensocial.model.Person;
++import org.apache.shindig.social.opensocial.model.Application;
++import org.apache.shindig.social.opensocial.model.Smoker;
++import org.apache.shindig.social.opensocial.model.Url;
++
++import org.apache.shindig.social.opensocial.jpa.SpaceDb;
++import org.apache.shindig.social.opensocial.jpa.MoodleModuleDb;
++
++import java.util.Date;
++import java.util.HashMap;
++import java.util.List;
++import java.util.Map;
++import java.util.Map.Entry;
++
++import javax.persistence.Basic;
++import javax.persistence.Column;
++import javax.persistence.Entity;
++import javax.persistence.GeneratedValue;
++import javax.persistence.Id;
++import javax.persistence.JoinColumn;
++import javax.persistence.JoinTable;
++import javax.persistence.ManyToMany;
++import javax.persistence.ManyToOne;
++import javax.persistence.NamedQueries;
++import javax.persistence.NamedQuery;
++import javax.persistence.OneToMany;
++import javax.persistence.PostLoad;
++import javax.persistence.PrePersist;
++import javax.persistence.Table;
++import javax.persistence.Temporal;
++import javax.persistence.TemporalType;
++import javax.persistence.Transient;
++import javax.persistence.Version;
++
++/**
++ * Default Implementation of the Person object in the org.apache.shindig.social.opensocial.jpa.
++ */
++@Entity
++@Table(name = "mdl_course_modules")
++public class MoodleCourseModuleDb implements DbObject {
++  
++  // 3 is owner in Graaasp
++  public static final String JPQL_OWNERS_BY_SPACE = "select p.userId from MoodleContextDb p where p.status = 'joined' and p.rightType = '3' and p.itemType = 'Space'";
++
++  /**
++   * The internal object ID used for references to this object. Should be generated by the
++   * underlying storage mechanism
++   */
++  @Id
++  @GeneratedValue(strategy = IDENTITY)
++  @Column(name = "id")
++  private long objectId;
++  
++  /**
++   * The internal itemId and itemType used for references to the item of a widget.
++   */
++  @Basic
++  @Column(name = "instance", length = 255)
++  private String instanceId;
++  
++  @Basic
++  @Column(name = "course", length = 255)
++  private String courseId;
++
++  /**
++   * The internal itemId and itemType used for references to the item of a widget.
++   */
++  @Basic
++  @Column(name = "module", length = 255)
++  private String moduleId;
++
++  @ManyToOne(targetEntity=SpaceDb.class)
++  @JoinColumn(name="instance", referencedColumnName="id", insertable = false, updatable = false)
++  private SpaceDb space;
++
++  @ManyToOne(targetEntity=MoodleModuleDb.class)
++  @JoinColumn(name="module", referencedColumnName="id", insertable = false, updatable = false)
++  private MoodleModuleDb module;
++
++  /**
++   *
++   */
++  @Basic
++  @Column(name = "id", length = 255, insertable = false, updatable = false)
++  protected String id;
++
++  // Note: Not in the opensocial js person object directly
++  @Transient
++  private boolean isOwner = false;
++
++  public MoodleCourseModuleDb() {
++  }
++
++  public String getInstanceId() {
++    return instanceId;
++  }
++
++  public void setInstanceId(String instanceId) {
++    this.instanceId = instanceId;
++  }                               
++
++  public MoodleModuleDb getModule() {
++    return module;
++  }
++  public String getCourseId() {
++    return courseId;
++  }
++
++  public String getModuleId() {
++    return moduleId;
++  }
++
++  public void setModuleId(String moduleId) {
++    this.moduleId = moduleId;
++  }                               
++    
++  public String getId() {
++    return id;
++  }
++
++  public void setId(String id) {
++    this.id = id;
++  }
++
++  public boolean getIsOwner() {
++    return isOwner;
++  }
++
++  public void setIsOwner(boolean isOwner) {
++    this.isOwner = isOwner;
++  }
++
++  // Proxied fields
++
++
++
++  private <T extends ListField> T getListFieldWithType(String type, List<T> list) {
++    if (list != null) {
++      for (T url : list) {
++        if (type.equalsIgnoreCase(url.getType())) {
++          return url;
++        }
++      }
++    }
++
++    return null;
++  }
++
++  private <T extends ListField> List<T> addListField(T field, List<T> list) {
++    if (list == null) {
++      list = Lists.newArrayList();
++    }
++    list.add(field);
++    return list;
++  }
++
++  /**
++   * @return the objectId
++   */
++  public long getObjectId() {
++    return Long.parseLong(id);
++  }
++
++  @PrePersist
++  public void populateDbFields() {
++
++
++  }
++
++  @PostLoad
++  public void loadTransientFields() {
++
++
++  }
++
++}
++
 Index: java/samples/src/main/java/org/apache/shindig/social/opensocial/jpa/AppdataDb.java
 ===================================================================
 --- java/samples/src/main/java/org/apache/shindig/social/opensocial/jpa/AppdataDb.java	(revision 0)
@@ -5396,6 +5654,200 @@ Index: java/samples/src/main/java/org/apache/shindig/social/opensocial/jpa/Addre
    private List<Person> atLocation;
  
    /**
+Index: java/samples/src/main/java/org/apache/shindig/social/opensocial/jpa/MoodleModuleDb.java
+===================================================================
+--- java/samples/src/main/java/org/apache/shindig/social/opensocial/jpa/MoodleModuleDb.java	(revision 0)
++++ java/samples/src/main/java/org/apache/shindig/social/opensocial/jpa/MoodleModuleDb.java	(revision 0)
+@@ -0,0 +1,189 @@
++/*
++ * Licensed to the Apache Software Foundation (ASF) under one
++ * or more contributor license agreements. See the NOTICE file
++ * distributed with this work for additional information
++ * regarding copyright ownership. The ASF licenses this file
++ * to you under the Apache License, Version 2.0 (the
++ * "License"); you may not use this file except in compliance
++ * with the License. You may obtain a copy of the License at
++ *
++ *     http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing,
++ * software distributed under the License is distributed on an
++ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++ * KIND, either express or implied. See the License for the
++ * specific language governing permissions and limitations under the License.
++ */
++package org.apache.shindig.social.opensocial.jpa;
++
++import static javax.persistence.CascadeType.ALL;
++import static javax.persistence.CascadeType.MERGE;
++import static javax.persistence.CascadeType.PERSIST;
++import static javax.persistence.CascadeType.REFRESH;
++import static javax.persistence.GenerationType.IDENTITY;
++
++import com.google.common.collect.Lists;
++import com.google.common.collect.Maps;
++
++import org.apache.shindig.social.opensocial.jpa.api.DbObject;
++import org.apache.shindig.social.opensocial.jpa.api.FilterCapability;
++import org.apache.shindig.social.opensocial.jpa.api.FilterSpecification;
++import org.apache.shindig.protocol.model.Enum;
++import org.apache.shindig.protocol.model.FilterOperation;
++import org.apache.shindig.social.opensocial.model.Account;
++import org.apache.shindig.social.opensocial.model.Address;
++import org.apache.shindig.social.opensocial.model.BodyType;
++import org.apache.shindig.social.opensocial.model.Drinker;
++import org.apache.shindig.social.opensocial.model.ListField;
++import org.apache.shindig.social.opensocial.model.LookingFor;
++import org.apache.shindig.social.opensocial.model.Name;
++import org.apache.shindig.social.opensocial.model.NetworkPresence;
++import org.apache.shindig.social.opensocial.model.Organization;
++import org.apache.shindig.social.opensocial.model.Person;
++import org.apache.shindig.social.opensocial.model.Application;
++import org.apache.shindig.social.opensocial.model.Smoker;
++import org.apache.shindig.social.opensocial.model.Url;
++
++import org.apache.shindig.social.opensocial.jpa.MoodleCourseModuleDb;
++
++import java.util.Date;
++import java.util.HashMap;
++import java.util.List;
++import java.util.Map;
++import java.util.Map.Entry;
++
++import javax.persistence.Basic;
++import javax.persistence.Column;
++import javax.persistence.Entity;
++import javax.persistence.GeneratedValue;
++import javax.persistence.Id;
++import javax.persistence.JoinColumn;
++import javax.persistence.JoinTable;
++import javax.persistence.ManyToMany;
++import javax.persistence.ManyToOne;
++import javax.persistence.NamedQueries;
++import javax.persistence.NamedQuery;
++import javax.persistence.OneToMany;
++import javax.persistence.PostLoad;
++import javax.persistence.PrePersist;
++import javax.persistence.Table;
++import javax.persistence.Temporal;
++import javax.persistence.TemporalType;
++import javax.persistence.Transient;
++import javax.persistence.Version;
++
++/**
++ * Default Implementation of the Person object in the org.apache.shindig.social.opensocial.jpa.
++ */
++@Entity
++@Table(name = "mdl_modules")
++public class MoodleModuleDb implements DbObject {
++  
++  // 3 is owner in Graaasp
++  public static final String JPQL_OWNERS_BY_SPACE = "select p.userId from MoodleContextDb p where p.status = 'joined' and p.rightType = '3' and p.itemType = 'Space'";
++
++  /**
++   * The internal object ID used for references to this object. Should be generated by the
++   * underlying storage mechanism
++   */
++  @Id
++  @GeneratedValue(strategy = IDENTITY)
++  @Column(name = "id")
++  private long objectId;
++  
++  /**
++   * The internal itemId and itemType used for references to the item of a widget.
++   */
++  @Basic
++  @Column(name = "name", length = 255)
++  private String name;
++
++  @OneToMany(targetEntity = MoodleCourseModuleDb.class, mappedBy = "module", cascade = ALL)
++  protected List<MoodleCourseModuleDb> courseModule;  //@OneToOne
++  
++  /**
++   *
++   */
++  @Basic
++  @Column(name = "id", length = 255, insertable = false, updatable = false)
++  protected String id;
++
++  // Note: Not in the opensocial js person object directly
++  @Transient
++  private boolean isOwner = false;
++
++  public MoodleModuleDb() {
++  }
++
++  public String getName() {
++    return name;
++  }
++
++  public void setName(String name) {
++    this.name = name;
++  }                               
++
++    
++  public String getId() {
++    return id;
++  }
++
++  public void setId(String id) {
++    this.id = id;
++  }
++
++  public boolean getIsOwner() {
++    return isOwner;
++  }
++
++  public void setIsOwner(boolean isOwner) {
++    this.isOwner = isOwner;
++  }
++
++  // Proxied fields
++
++
++
++  private <T extends ListField> T getListFieldWithType(String type, List<T> list) {
++    if (list != null) {
++      for (T url : list) {
++        if (type.equalsIgnoreCase(url.getType())) {
++          return url;
++        }
++      }
++    }
++
++    return null;
++  }
++
++  private <T extends ListField> List<T> addListField(T field, List<T> list) {
++    if (list == null) {
++      list = Lists.newArrayList();
++    }
++    list.add(field);
++    return list;
++  }
++
++  /**
++   * @return the objectId
++   */
++  public long getObjectId() {
++    return Long.parseLong(id);
++  }
++
++  @PrePersist
++  public void populateDbFields() {
++
++
++  }
++
++  @PostLoad
++  public void loadTransientFields() {
++
++
++  }
++
++}
++
++
 Index: java/samples/src/main/java/org/apache/shindig/social/opensocial/jpa/PermissionDb.java
 ===================================================================
 --- java/samples/src/main/java/org/apache/shindig/social/opensocial/jpa/PermissionDb.java	(revision 0)
@@ -5642,7 +6094,7 @@ Index: java/samples/src/main/java/org/apache/shindig/social/opensocial/jpa/Appli
 ===================================================================
 --- java/samples/src/main/java/org/apache/shindig/social/opensocial/jpa/ApplicationDb.java	(revision 1162941)
 +++ java/samples/src/main/java/org/apache/shindig/social/opensocial/jpa/ApplicationDb.java	(working copy)
-@@ -17,108 +17,484 @@
+@@ -17,108 +17,487 @@
   */
  package org.apache.shindig.social.opensocial.jpa;
  
@@ -5952,6 +6404,9 @@ Index: java/samples/src/main/java/org/apache/shindig/social/opensocial/jpa/Appli
 +  }
 +
 +  public String getScreenshotUrl() {
++    if (screenshotUrl == null || screenshotUrl.equals("")) {
++      return "no screenshot for this widget";
++    }
 +    return screenshotUrl;
 +  }
 +
@@ -5960,7 +6415,7 @@ Index: java/samples/src/main/java/org/apache/shindig/social/opensocial/jpa/Appli
 +  }
 +  
 +  public String getProfileUrl() {
-+    return "path_url"+String.valueOf(objectId);     
++    return "no profile urls for apps in Moodle";
 +  }
 +
 +  public void setProfileUrl(String profileUrl) {
@@ -5970,10 +6425,10 @@ Index: java/samples/src/main/java/org/apache/shindig/social/opensocial/jpa/Appli
 +  public String getThumbnailUrl() {
 +    String pic = picture;
 +    if (pic == null || pic.equals("")) {
-+      return "path_url/widget_thumb.png";
++      return "no thumbnail for this widget";
 +    }
 +    
-+    return "path_url/picture/"+String.valueOf(objectId)+"/thumb/"+pic;        
++    return pic;
 +  }
 +
 +  public void setThumbnailUrl(String thumbnailUrl) {
@@ -7002,13 +7457,17 @@ Index: java/samples/src/main/resources/META-INF/orm.xml
 ===================================================================
 --- java/samples/src/main/resources/META-INF/orm.xml	(revision 1162941)
 +++ java/samples/src/main/resources/META-INF/orm.xml	(working copy)
-@@ -82,4 +82,14 @@
+@@ -82,4 +82,18 @@
    </entity>
    <entity class="org.apache.shindig.social.opensocial.jpa.ApplicationDataMapValueDb">
    </entity>
 +  <entity class="org.apache.shindig.social.opensocial.jpa.SpaceDb">
 +  </entity>
 +  <entity class="org.apache.shindig.social.opensocial.jpa.DocumentDb">
++  </entity>
++  <entity class="org.apache.shindig.social.opensocial.jpa.MoodleCourseModuleDb">
++  </entity>
++  <entity class="org.apache.shindig.social.opensocial.jpa.MoodleModuleDb">
 +  </entity>
 +  <entity class="org.apache.shindig.social.opensocial.jpa.MoodleContextDb">
 +  </entity>
@@ -7199,6 +7658,33 @@ Index: pom.xml
          <artifactId>shindig-common</artifactId>
          <version>${project.version}</version>
          <type>test-jar</type>
+Index: config/oauth.json
+===================================================================
+--- config/oauth.json	(revision 1162941)
++++ config/oauth.json	(working copy)
+@@ -31,7 +31,21 @@
+       "consumer_secret" : "secret",
+       "key_type" : "HMAC_SYMMETRIC"
+     }
+-  }
++  },
++  "http://iamac71.epfl.ch:3000/gadget/oauth_graaasp.xml" : {
++        "graaasp" : {
++            "consumer_secret" : "kAgoDAEDKBoCnMdThTgoqN0Lvo1w7WBGjtSiqhrA",
++            "consumer_key"    : "M8dkbY4SYJNOSnf0CaMw",
++            "key_type"        : "HMAC_SHA1"
++        }
++  },
++  "http://iamac71.epfl.ch:3000/gadget/portability.xml" : {
++        "portability" : {
++            "consumer_secret" : "mJlIprRWyLD9iccVeXSfcTS2fKFwyVBg1HjT0frN",
++            "consumer_key"    : "MDHFY2Iy3blxxkj52xwY",
++            "key_type"        : "HMAC_SHA1"
++        }
++  },
+ }
+   
+ 
 Index: features/src/main/javascript/features/shindig.container/shindig-container.js
 ===================================================================
 --- features/src/main/javascript/features/shindig.container/shindig-container.js	(revision 1162941)

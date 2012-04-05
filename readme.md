@@ -35,8 +35,8 @@ Click button "Save and display". Enjoy!
 
 Example gadgets
 ===============
-* Iframe gadget (uses appdata to save urls) - http://graaasp.epfl.ch/gadget/iframe.xml
-* Sample gadgets stats - viewer/owner and context (widgetspace id) for a widget - http://graaasp.epfl.ch/gadget/gadget_info.xml
+* Iframe gadget (uses appdata to save urls) - http://graasp.epfl.ch/gadget/iframe.xml
+* Sample gadgets stats - viewer/owner and context (widgetspace id) for a widget - http://graasp.epfl.ch/gadget/gadget_info.xml
 
 See code inside for more details
 
@@ -110,6 +110,12 @@ Change host and port settings for your shindig
     aKey=/shindig/gadgets/proxy?container=default&amp;url=
     shindig.port=8080
     
+
+Change the url of your moodle installation
+    
+    # Change MOODLE_URL to your own url
+    public static final String MOODLE_URL = "http://iamac71.epfl.ch/moodle";
+
 
 Change column name in person.db file. Only, if you do not use standard moodle prefix for tables "mdl_"
     

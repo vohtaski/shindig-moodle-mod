@@ -113,6 +113,7 @@ Change host and port settings for your shindig
 
 Change the url of your moodle installation
     
+    # In file: java/samples/src/main/java/org/apache/shindig/social/opensocial/jpa/SpaceDb.java
     # Change MOODLE_URL to your own url
     public static final String MOODLE_URL = "http://iamac71.epfl.ch/moodle";
 

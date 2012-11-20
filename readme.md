@@ -11,7 +11,7 @@ For the OpenSocial JavaScript API to use inside gadget please refer to [wiki pag
 Requirements
 ==============
 * Moodle 2.1 (was not checked on previous versions!)
-* Apache Shindig 2.0
+* [Apache Shindig 2.0 with spaces](https://github.com/vohtaski/moodle-shindig)
    
 How to use gadgets
 ==================

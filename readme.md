@@ -98,3 +98,10 @@ Thanks
 =======
 * Carsten Ullrich
 * Alex DePena
+
+Acknowledgments
+================
+This plugin has been initially developed by "Evgeny Bogdanov" in his capacity as an employee
+of the Swiss Federal Institute of Technology in Lausanne (EPFL) with the partial support of 
+the 6th and 7th Framework Programs for Research and Technological Development of the European 
+Union in Information and Communication Technologies (ROLE Project).

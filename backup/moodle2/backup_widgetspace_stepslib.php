@@ -40,7 +40,7 @@ class backup_widgetspace_activity_structure_step extends backup_activity_structu
 
         // Define each element separated
         $widgetspace = new backup_nested_element('widgetspace', array('id'), array(
-            'name', 'intro', 'introformat', 'numbercolumn','content', 'contentformat',
+            'name', 'intro', 'introformat', 'numbercolumn', 'content', 'contentformat',
             'legacyfiles', 'legacyfileslast', 'display', 'displayoptions',
             'revision', 'timemodified'));
         // Build the tree
@@ -48,16 +48,17 @@ class backup_widgetspace_activity_structure_step extends backup_activity_structu
 
         // Define sources
         //$widgetspace->set_source_table('widgetspace', array('id' => backup::VAR_ACTIVITYID));
-		$widgetspace->set_source_table('widgetspace', array('id' => backup::VAR_ACTIVITYID));
-		
-		//still need to backup the gadgets data related to this widgetspace;
-		$gadgets = new backup_nested_element('gadgets', array('id'), array(
+        $widgetspace->set_source_table('widgetspace', array('id' => backup::VAR_ACTIVITYID));
+
+        
+        //still need to backup the gadgets data related to this widgetspace;
+        $gadgets = new backup_nested_element('gadgets', array('id'), array(
             'widgetspaceid', 'url', 'name', 'height', 'thumbnail',
             'screenshot', 'description', 'timemodified'));
-		$widgetspace->add_child($gadgets);
-		
-		$gadgets->set_source_sql('SELECT * FROM {widgetspace_gadgets} WHERE  widgetspaceid= ?', array(backup::VAR_ACTIVITYID));
-
+        $widgetspace->add_child($gadgets);
+        
+        $gadgets->set_source_sql('SELECT * FROM {widgetspace_gadgets} WHERE  widgetspaceid= ?', array(backup::VAR_ACTIVITYID));
+        
         // Define id annotations
         // (none)
 

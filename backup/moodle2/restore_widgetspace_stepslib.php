@@ -35,7 +35,7 @@ class restore_widgetspace_activity_structure_step extends restore_activity_struc
 
         $paths = array();
         $paths[] = new restore_path_element('widgetspace', '/activity/widgetspace');
-		$paths[] = new restore_path_element('gadgets','/activity/widgetspace/gadgets');
+        $paths[] = new restore_path_element('gadgets','/activity/widgetspace/gadgets');
 
         // Return the paths wrapped into standard activity structure
         return $this->prepare_activity_structure($paths);
@@ -55,13 +55,13 @@ class restore_widgetspace_activity_structure_step extends restore_activity_struc
         $this->set_mapping('widgetspace', $oldid, $newitemid);
     }
 	protected function process_gadgets($data) {
-		global $DB;
-		$data = (object)$data;
+        global $DB;
+        $data = (object)$data;
         $oldid = $data->id;
-		$data->widgetspaceid = $this->get_new_parentid('widgetspace');
-		$data->timemodified = $this->apply_date_offset($data->timemodified);
-		$newitemid = $DB->insert_record('widgetspace_gadgets', $data);
-	}
+        $data->widgetspaceid = $this->get_new_parentid('widgetspace');
+        $data->timemodified = $this->apply_date_offset($data->timemodified);
+        $newitemid = $DB->insert_record('widgetspace_gadgets', $data);
+    }
     protected function after_execute() {
         // Add widgetspace related files, no need to match by itemname (just internally handled context)
         $this->add_related_files('mod_widgetspace', 'intro', null);
